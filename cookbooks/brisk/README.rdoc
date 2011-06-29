@@ -4,12 +4,13 @@ This script launches a DataStax' Brisk cluster of a predetermined size. It also 
 
 This has been tested in Ubuntu 10.10 and CentOS 5.5, but should support your version of Ubuntu, CentOS, and RedHat.
 
+This script will be developed and housed at: https://github.com/riptano/chef. On every Brisk release, however, expect https://github.com/riptano/brisk to contain the newest version.
+
 = REQUIREMENTS:
 
 Follow the instructions as listed here: http://wiki.opscode.com/display/chef/Quick+Start.
 
 == Configure cloud access
--------------------------
 
 Proceed to configure your cloud access by adding these following lines to your ~/.chef/knife.rb file.
 
@@ -63,7 +64,6 @@ After properly configuring the attributes, upload the cookbook files again by ru
 = USAGE:
 
 == Configure roles
-------------------
 
 Run this line from your default chef folder:
 
@@ -88,7 +88,6 @@ where <role> is the value declared as default[:setup][:current_role]. Edit the f
     }
 
 == Starting up a cluster
-------------------------
 
 An Ubuntu 10.10 cloud in Rackspace:
 
@@ -116,7 +115,6 @@ A CentOS 5.5 cloud in Rackspace:
 NOTE: You can run these lines more times as long as the attributes are set properly. Also, these lines should be run consecutively and never in parallel.
 
 == Bootstrapping Commands
--------------------------
 
 In order to run bootstrapping commands, you must be able to complete a passwordless SSH login. Typically, by copying your ~/.ssh/id_rsa.pub key into the target machine's ~/.ssh/authorized_keys file, passwordless SSH should work. Search google for more information.
 
@@ -138,7 +136,6 @@ NOTE: The user for the Ubuntu machine's script is 'ubuntu' based on EC2's curren
 
 
 == Other Useful Debugging Commands
-----------------------------------
 
 This commands shows the json for a chosen machine that is accessible through the Chef script:
 
