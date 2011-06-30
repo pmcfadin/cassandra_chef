@@ -29,6 +29,10 @@ else
   installOpscenter = false
 end
 
+if installOpscenter and node[:platform] == "fedora"
+  Chef::Log.info "Sorry, OpsCenter does not support Fedora."
+  installOpscenter = false
+end
 
 ###################################################
 # 
@@ -37,7 +41,7 @@ end
 ###################################################
 
 case node[:platform]
-  when "ubuntu"
+  when "ubuntu", "debian"
     include_recipe "apt"
 
     # Adds the DataStax repo:
@@ -86,13 +90,19 @@ case node[:platform]
       action :add
     end
 
-  when "centos", "redhat"
+  when "centos", "redhat", "fedora"
+    if node[:platform] == "fedora"
+      distribution="Fedora"
+    else
+      distribution="EL"
+    end
+
     # Add the DataStax Repo
     platformMajor = node[:platform_version].split(".")[0]
     filename = "/etc/yum.repos.d/datastax.repo"
     repoFile = "[datastax]" << "\n" <<
                "name=DataStax Repo for Apache Cassandra" << "\n" <<
-               "baseurl=http://rpm.datastax.com/EL/#{platformMajor}" << "\n" <<
+               "baseurl=http://rpm.datastax.com/#{distribution}/#{platformMajor}" << "\n" <<
                "enabled=1" << "\n" <<
                "gpgcheck=0" << "\n"
     File.open(filename, 'w') {|f| f.write(repoFile) }
@@ -140,7 +150,7 @@ end
 ###################################################
 
 case node[:platform]
-  when "ubuntu"
+  when "ubuntu", "debian"
     # Ensure all native components are up to date
     execute 'sudo apt-get -y upgrade'
 
@@ -161,7 +171,7 @@ case node[:platform]
     package "libjna-java"
     package "liblzo2-dev"
     
-  when "centos", "redhat"
+  when "centos", "redhat", "fedora"
     # Ensure all native components are up to date
     execute 'sudo yum -y update'
     execute 'sudo yum -y upgrade'
@@ -176,7 +186,7 @@ end
 
 # Addtional optional programs/utilities
 case node[:platform]
-  when "ubuntu"
+  when "ubuntu", "debian"
     package "pssh"
     package "xfsprogs"
     package "maven2"
@@ -186,11 +196,12 @@ case node[:platform]
       options "--no-install-recommends"
       action :install
     end
-  when "centos", "redhat"
+  when "centos", "redhat", "fedora"
     # Addtional optional program for RAID management
     package "mdadm"
 end
 
+package "python"
 package "htop"
 package "iftop"
 package "pbzip2"
@@ -317,7 +328,7 @@ ruby_block "ReadTokens" do
     results << line.split(':')[1].strip if line.include? 'Node'
   end
 
-  Chef::Log.info results
+  Chef::Log.info "Setting token to be: #{results[brisk_nodes.count]}"
   node[:brisk][:initial_token] = results[brisk_nodes.count] unless node[:brisk][:initial_token] > 0
  end
 end
@@ -418,4 +429,13 @@ ruby_block "buildOpscenterdConf" do
   if installOpscenter
     notifies :restart, resources(:service => "opscenterd"), :immediately
   end
+end
+
+ruby_block "FedoraOpsCenterResponse" do
+  block do
+    if node[:opscenter][:user] and node[:opscenter][:pass] and brisk_nodes.count == 0 and node[:platform] == "fedora"
+      Chef::Log.info "Sorry, OpsCenter does not support Fedora."
+    end
+  end
+  action :create
 end
