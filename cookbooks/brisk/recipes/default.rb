@@ -13,25 +13,38 @@
 # 
 ###################################################
 
-service "brisk" do
-  action :stop
+# Stop Brisk and OpsCenter if they are running.
+# Different for Debian due to service package.
+if node[:platform] == "debian"
+  service "brisk" do
+    action :stop
+    ignore_failure true
+  end
+
+  service "opscenterd" do
+    action :stop
+    ignore_failure true
+  end
+else
+  service "brisk" do
+    action :stop
+  end
+
+  service "opscenterd" do
+    action :stop
+  end
 end
 
-service "opscenterd" do
-  action :stop
-end
+RECOMMENDED_INSTALL = true
+OPTIONAL_INSTALL = true
 
 brisk_nodes = search(:node, "role:#{node[:setup][:current_role]}").sort
 
-if node[:opscenter][:user] and node[:opscenter][:pass] and brisk_nodes.count == 0
-  installOpscenter = true
-else
-  installOpscenter = false
-end
-
-if installOpscenter and node[:platform] == "fedora"
-  Chef::Log.info "Sorry, OpsCenter does not support Fedora."
-  installOpscenter = false
+installOpscenter = false
+if !(node[:platform] == "fedora")
+  if node[:opscenter][:user] and node[:opscenter][:pass] and brisk_nodes.count == 0
+    installOpscenter = true
+  end
 end
 
 ###################################################
@@ -44,11 +57,22 @@ case node[:platform]
   when "ubuntu", "debian"
     include_recipe "apt"
 
+    codename = ""
+    if node[:platform] == "debian"
+      if node[:platform_version] == "6.0"
+        codename = "squeeze"
+      elsif node[:platform_version] == "5.0"
+        codename = "lenny"
+      end
+    else
+      codename = node['lsb']['codename']
+    end
+
     # Adds the DataStax repo:
     # deb http://debian.riptano.com/<codename> <codename> main
     apt_repository "datastax-repo" do
-      uri "http://debian.datastax.com/" << node['lsb']['codename']
-      distribution node['lsb']['codename']
+      uri "http://debian.datastax.com/" << codename
+      distribution codename
       components ["main"]
       key "http://debian.datastax.com/debian/repo_key"
       action :add
@@ -57,8 +81,8 @@ case node[:platform]
     # Adds the Riptano repo:
     # deb http://riptano.riptano.com/<codename> <codename> main
     apt_repository "riptano-repo" do
-      uri "http://debian.riptano.com/" << node['lsb']['codename']
-      distribution node['lsb']['codename']
+      uri "http://debian.riptano.com/" << codename
+      distribution codename
       components ["main"]
       action :add
     end
@@ -149,34 +173,35 @@ end
 # 
 ###################################################
 
-case node[:platform]
-  when "ubuntu", "debian"
-    # Ensure all native components are up to date
-    execute 'sudo apt-get -y upgrade'
+if RECOMMENDED_INSTALL
+  case node[:platform]
+    when "ubuntu", "debian"
+      # Ensure all native components are up to date
+      execute 'sudo apt-get -y upgrade'
 
-    # Allow for non-interactive Sun Java setup
-    execute 'echo "sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true" | sudo debconf-set-selections'
-    package "sun-java6-jdk"
+      # Allow for non-interactive Sun Java setup
+      execute 'echo "sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true" | sudo debconf-set-selections'
+      package "sun-java6-jdk"
 
-    # Uninstall other Java Versions
-    execute 'sudo update-alternatives --set java /usr/lib/jvm/java-6-sun/jre/bin/java'
-    package "openjdk-6-jre-headless" do
-      action :remove
-    end
-    package "openjdk-6-jre-lib" do
-      action :remove
-    end
-    
-    # Install JNA and the LZO compressor for Brisk
-    package "libjna-java"
-    package "liblzo2-dev"
-    
-  when "centos", "redhat", "fedora"
-    # Ensure all native components are up to date
-    execute 'sudo yum -y update'
-    execute 'sudo yum -y upgrade'
+      # Uninstall other Java Versions
+      execute 'sudo update-alternatives --set java /usr/lib/jvm/java-6-sun/jre/bin/java'
+      package "openjdk-6-jre-headless" do
+        action :remove
+      end
+      package "openjdk-6-jre-lib" do
+        action :remove
+      end
+      
+      # Install JNA and the LZO compressor for Brisk
+      package "libjna-java"
+      package "liblzo2-dev"
+      
+    when "centos", "redhat", "fedora"
+      # Ensure all native components are up to date
+      execute 'sudo yum -y update'
+      execute 'sudo yum -y upgrade'
+  end
 end
-
 
 ###################################################
 # 
@@ -184,39 +209,41 @@ end
 # 
 ###################################################
 
-# Addtional optional programs/utilities
-case node[:platform]
-  when "ubuntu", "debian"
-    package "pssh"
-    package "xfsprogs"
-    package "maven2"
+if OPTIONAL_INSTALL
+  # Addtional optional programs/utilities
+  case node[:platform]
+    when "ubuntu", "debian"
+      package "pssh"
+      package "xfsprogs"
+      package "maven2"
+      package "git-core"
 
-    # Addtional optional program for RAID management
-    package "mdadm" do
-      options "--no-install-recommends"
-      action :install
-    end
-  when "centos", "redhat", "fedora"
-    # Addtional optional program for RAID management
-    package "mdadm"
+      # Addtional optional program for RAID management
+      package "mdadm" do
+        options "--no-install-recommends"
+        action :install
+      end
+    when "centos", "redhat", "fedora"
+      # Addtional optional program for RAID management
+      package "mdadm"
+      package "git"
+  end
+
+  package "python"
+  package "htop"
+  package "iftop"
+  package "pbzip2"
+  package "ant"
+  package "emacs"
+  package "sysstat"
+  package "zip"
+  package "unzip"
+  package "binutils"
+  package "ruby"
+  package "openssl"
+  package "ant"
+  package "curl"
 end
-
-package "python"
-package "htop"
-package "iftop"
-package "pbzip2"
-package "git"
-package "ant"
-package "emacs"
-package "sysstat"
-package "zip"
-package "unzip"
-package "binutils"
-package "ruby"
-package "openssl"
-package "ant"
-package "curl"
-
 
 ###################################################
 # 
@@ -355,7 +382,7 @@ else
     seeds << brisk_nodes[node[:setup][:vanilla_nodes]][:cloud][:private_ips].first
   end
 
-  # Add this node as a seed since this is the first vanilla node
+  # Add this node as a seed since this is the first tasktracker node
   if brisk_nodes.count == node[:setup][:vanilla_nodes]
     seeds << node[:cloud][:private_ips].first
   end

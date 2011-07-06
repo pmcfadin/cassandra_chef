@@ -105,6 +105,15 @@ An Ubuntu 10.10 cloud in EC2:
     knife ec2 server create -r "role[brisk]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server03
     knife ec2 server create -r "role[brisk]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server04
 
+NOTE: These AMIs only work in the US-East region. For all other regions, see http://cloud.ubuntu.com/ami/.
+
+A Debian 6.0 (Squeeze) cloud in Rackspace:
+
+    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server01 -N Server01
+    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server02 -N Server02
+    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server03 -N Server03
+    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server04 -N Server04
+
 A CentOS 5.5 cloud in Rackspace:
 
     knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server01 -N Server01
@@ -112,27 +121,13 @@ A CentOS 5.5 cloud in Rackspace:
     knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server03 -N Server03
     knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server04 -N Server04
 
-A Debian 6.0 (Squeeze) cloud in Rackspace:
-
-    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -d centos5-gems -S Server01 -N Server01
-    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -d centos5-gems -S Server02 -N Server02
-    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -d centos5-gems -S Server03 -N Server03
-    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -d centos5-gems -S Server04 -N Server04
-
-A Fedora 14 cloud in Rackspace:
-
-    knife rackspace server create -r "role[brisk]" -i 71 -f 6 -d centos5-gems -S Server01 -N Server01
-    knife rackspace server create -r "role[brisk]" -i 71 -f 6 -d centos5-gems -S Server02 -N Server02
-    knife rackspace server create -r "role[brisk]" -i 71 -f 6 -d centos5-gems -S Server03 -N Server03
-    knife rackspace server create -r "role[brisk]" -i 71 -f 6 -d centos5-gems -S Server04 -N Server04
-
 NOTE: You can run these lines more times as long as the attributes are set properly. Also, these lines should be run consecutively and never in parallel.
 
 == Bootstrapping Commands
 
 In order to run bootstrapping commands, you must be able to complete a passwordless SSH login. Typically, by copying your ~/.ssh/id_rsa.pub key into the target machine's ~/.ssh/authorized_keys file, passwordless SSH should work. Search google for more information.
 
-For an Ubuntu Machine:
+For an Ubuntu/Debian Machine:
 
     knife bootstrap -r recipe['brisk'] --sudo -x root <publicDNS>
 
@@ -140,19 +135,16 @@ For an Ubuntu Machine on EC2:
 
     knife bootstrap -r recipe['brisk'] --sudo -x ubuntu <publicDNS>
 
-For a CentOS Machine:
+For a CentOS 5 Machine:
 
     knife bootstrap -r "recipe['brisk']" --sudo -x root -d centos5-gems <publicDNS>
 
-For a RedHat Machine:
+For a RedHat 5 Machine (Untested):
 
     wget http://goo.gl/0k8mV -O- > ~/.chef/bootstrap/rhel5-rbel.erb
     knife bootstrap --sudo -x root -d rhel5-rbel <publicDNS>
     knife bootstrap -r recipe['brisk'] --sudo -x root -d rhel5-rbel <publicDNS>
 
-For a Fedora Machine:
-
-    knife bootstrap -r "recipe['brisk']" --sudo -x root -d fedora13-gems <publicDNS>
 
 == Other Useful Debugging Commands
 
