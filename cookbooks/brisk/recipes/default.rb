@@ -458,7 +458,7 @@ ruby_block "buildOpscenterdConf" do
   end
 end
 
-ruby_block "FedoraOpsCenterResponse" do
+ruby_block "OpsCenterResponse" do
   block do
     if node[:opscenter][:user] and node[:opscenter][:pass] and brisk_nodes.count == 0 and node[:platform] == "fedora"
       Chef::Log.info "Sorry, OpsCenter does not support Fedora."
