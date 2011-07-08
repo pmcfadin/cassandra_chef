@@ -38,7 +38,7 @@ end
 RECOMMENDED_INSTALL = true
 OPTIONAL_INSTALL = true
 
-brisk_nodes = search(:node, "role:#{node[:setup][:current_role]}").sort
+brisk_nodes = search(:node, "role:#{node[:setup][:current_role]}")
 
 installOpscenter = false
 if !(node[:platform] == "fedora")
@@ -372,21 +372,26 @@ seeds = []
 # Pull the seeds from the chef db
 if brisk_nodes.count == 0
   # Add this node as a seed since this is the first node
+  Chef::Log.info "[SEEDS] First node chooses itself."
   seeds << node[:cloud][:private_ips].first
 else
   # Add the first node as a seed
+  Chef::Log.info "[SEEDS] Add the first node."
   seeds << brisk_nodes[0][:cloud][:private_ips].first
-
-  # Add the first node in the second DC
-  if (brisk_nodes.count > node[:setup][:vanilla_nodes]) and !(node[:setup][:vanilla_nodes] == 0)
-    seeds << brisk_nodes[node[:setup][:vanilla_nodes]][:cloud][:private_ips].first
-  end
 
   # Add this node as a seed since this is the first tasktracker node
   if brisk_nodes.count == node[:setup][:vanilla_nodes]
+    Chef::Log.info "[SEEDS] Add this node since it's the first TaskTracker node."
     seeds << node[:cloud][:private_ips].first
   end
+
+  # Add the first node in the second DC
+  if (brisk_nodes.count > node[:setup][:vanilla_nodes]) and !(node[:setup][:vanilla_nodes] == 0)
+    Chef::Log.info "[SEEDS] Add the first node."
+    seeds << brisk_nodes[node[:setup][:vanilla_nodes]][:cloud][:private_ips].first
+  end
 end
+Chef::Log.info "[SEEDS] Chosen seeds: " << seeds.pretty
 
 
 ###################################################
