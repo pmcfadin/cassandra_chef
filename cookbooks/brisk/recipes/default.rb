@@ -401,7 +401,7 @@ else
   seeds = node[:brisk][:seed].gsub(/ /,'').split(",")
 end
 
-Chef::Log.info "[SEEDS] Chosen seeds: " << seeds.pretty
+Chef::Log.info "[SEEDS] Chosen seeds: " << seeds.inspect
 
 
 ###################################################
