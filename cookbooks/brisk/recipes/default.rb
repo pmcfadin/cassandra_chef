@@ -39,10 +39,13 @@ RECOMMENDED_INSTALL = true
 OPTIONAL_INSTALL = true
 
 brisk_nodes = search(:node, "role:#{node[:setup][:current_role]}")
+if !node[:brisk][:token_position]
+  node[:brisk][:token_position] = brisk_nodes.count
+end
 
 installOpscenter = false
 if !(node[:platform] == "fedora")
-  if node[:opscenter][:user] and node[:opscenter][:pass] and brisk_nodes.count == 0
+  if node[:opscenter][:user] and node[:opscenter][:pass] and node[:brisk][:token_position] == 0
     installOpscenter = true
   end
 end
@@ -339,25 +342,27 @@ end
 # 
 ###################################################
 
-cookbook_file "/tmp/tokentool.py" do
-  source "tokentool.py"
-  mode "0755"
-end
-
-execute "/tmp/tokentool.py #{node[:setup][:vanilla_nodes]} #{node[:setup][:cluster_size] - node[:setup][:vanilla_nodes]} > /tmp/tokens" do
-  creates "/tmp/tokens"
-end
-
-ruby_block "ReadTokens" do
- block do
-  results = []
-  open("/tmp/tokens").each do |line|
-    results << line.split(':')[1].strip if line.include? 'Node'
+if !:initial_token
+  cookbook_file "/tmp/tokentool.py" do
+    source "tokentool.py"
+    mode "0755"
   end
 
-  Chef::Log.info "Setting token to be: #{results[brisk_nodes.count]}"
-  node[:brisk][:initial_token] = results[brisk_nodes.count] unless node[:brisk][:initial_token] > 0
- end
+  execute "/tmp/tokentool.py #{node[:setup][:vanilla_nodes]} #{node[:setup][:cluster_size] - node[:setup][:vanilla_nodes]} > /tmp/tokens" do
+    creates "/tmp/tokens"
+  end
+
+  ruby_block "ReadTokens" do
+    block do
+      results = []
+      open("/tmp/tokens").each do |line|
+        results << line.split(':')[1].strip if line.include? 'Node'
+      end
+
+      Chef::Log.info "Setting token to be: #{results[node[:brisk][:token_position]]}"
+      node[:brisk][:initial_token] = results[node[:brisk][:token_position]] unless node[:brisk][:initial_token] > 0
+    end
+  end
 end
 
 
@@ -367,30 +372,35 @@ end
 # 
 ###################################################
 
-seeds = []
+if !node[:brisk][:seed]
+  seeds = []
 
-# Pull the seeds from the chef db
-if brisk_nodes.count == 0
-  # Add this node as a seed since this is the first node
-  Chef::Log.info "[SEEDS] First node chooses itself."
-  seeds << node[:cloud][:private_ips].first
-else
-  # Add the first node as a seed
-  Chef::Log.info "[SEEDS] Add the first node."
-  seeds << brisk_nodes[0][:cloud][:private_ips].first
-
-  # Add this node as a seed since this is the first tasktracker node
-  if brisk_nodes.count == node[:setup][:vanilla_nodes]
-    Chef::Log.info "[SEEDS] Add this node since it's the first TaskTracker node."
+  # Pull the seeds from the chef db
+  if brisk_nodes.count == 0
+    # Add this node as a seed since this is the first node
+    Chef::Log.info "[SEEDS] First node chooses itself."
     seeds << node[:cloud][:private_ips].first
-  end
-
-  # Add the first node in the second DC
-  if (brisk_nodes.count > node[:setup][:vanilla_nodes]) and !(node[:setup][:vanilla_nodes] == 0)
+  else
+    # Add the first node as a seed
     Chef::Log.info "[SEEDS] Add the first node."
-    seeds << brisk_nodes[node[:setup][:vanilla_nodes]][:cloud][:private_ips].first
+    seeds << brisk_nodes[0][:cloud][:private_ips].first
+
+    # Add this node as a seed since this is the first tasktracker node
+    if brisk_nodes.count == node[:setup][:vanilla_nodes]
+      Chef::Log.info "[SEEDS] Add this node since it's the first TaskTracker node."
+      seeds << node[:cloud][:private_ips].first
+    end
+
+    # Add the first node in the second DC
+    if (brisk_nodes.count > node[:setup][:vanilla_nodes]) and !(node[:setup][:vanilla_nodes] == 0)
+      Chef::Log.info "[SEEDS] Add the first node."
+      seeds << brisk_nodes[node[:setup][:vanilla_nodes]][:cloud][:private_ips].first
+    end
   end
+else
+  seeds = node[:brisk][:seed].gsub(/ /,'').split(",")
 end
+
 Chef::Log.info "[SEEDS] Chosen seeds: " << seeds.pretty
 
 
@@ -404,7 +414,7 @@ ruby_block "buildBriskFile" do
   block do
     filename = "/etc/default/brisk"
     briskFile = File.read(filename)
-    if brisk_nodes.count < node[:setup][:vanilla_nodes]
+    if node[:brisk][:token_position] < node[:setup][:vanilla_nodes]
       briskFile = briskFile.gsub(/HADOOP_ENABLED=1/, "HADOOP_ENABLED=0")
     else
       briskFile = briskFile.gsub(/HADOOP_ENABLED=0/, "HADOOP_ENABLED=1")
@@ -465,7 +475,7 @@ end
 
 ruby_block "OpsCenterResponse" do
   block do
-    if node[:opscenter][:user] and node[:opscenter][:pass] and brisk_nodes.count == 0 and node[:platform] == "fedora"
+    if node[:opscenter][:user] and node[:opscenter][:pass] and node[:brisk][:token_position] == 0 and node[:platform] == "fedora"
       Chef::Log.info "Sorry, OpsCenter does not support Fedora."
     end
   end

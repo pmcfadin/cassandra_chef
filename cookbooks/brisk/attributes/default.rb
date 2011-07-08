@@ -12,10 +12,11 @@ default[:opscenter][:free] = false
 
 
 # Advanced settings
-default[:brisk][:initial_token] = 0
+default[:brisk][:token_position] = false
+default[:brisk][:initial_token] = false
+default[:brisk][:seed] = false
 default[:brisk][:commitlog_dir] = "/var/lib"
 default[:brisk][:data_dir] = "/var/lib"
-default[:brisk][:seed] = false
 default[:brisk][:rpc_address] = "0.0.0.0"
 default[:brisk][:endpoint_snitch] = "org.apache.cassandra.locator.BriskSimpleSnitch"
 

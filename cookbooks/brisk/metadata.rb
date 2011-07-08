@@ -39,10 +39,20 @@ attribute "brisk/cluster_name",
   :description => "Keeps clusters together, not allowing servers from other clusters to talk",
   :default => "Brisk Cluster"
 
+attribute "brisk/token_position",
+  :display_name => "Brisk Initial Token Position",
+  :description => "For use when adding a node that may have previously failed or been destroyed",
+  :default => "false"
+
 attribute "brisk/initial_token",
   :display_name => "Brisk Initial Token",
   :description => "The standard initial token",
-  :default => "0"
+  :default => "false"
+
+attribute "brisk/seed",
+  :display_name => "Brisk Seed Server",                                                                                                                                                                        
+  :description => "The comma seperated list of seeds (Make sure to include one seed from each datacenter minimum)",
+  :default => "false"
 
 attribute "brisk/commitlog_dir",
   :display_name => "Brisk Commit Log Directory",                                                                                                                                                                        
@@ -53,11 +63,6 @@ attribute "brisk/data_dir",
   :display_name => "Brisk Data Directory",                                                                                                                                                                        
   :description => "The location for the data directory (preferably on it's own drive or RAID0 device)",
   :default => "/var/lib"
-
-attribute "brisk/seed",
-  :display_name => "Brisk Seed Server",                                                                                                                                                                        
-  :description => "This server is the seed for the rest of the cluster",
-  :default => "false"
 
 attribute "brisk/rpc_address",
   :display_name => "Brisk RPC Address",                                                                                                                                                                        
