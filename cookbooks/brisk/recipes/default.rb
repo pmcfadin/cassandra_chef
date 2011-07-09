@@ -39,9 +39,16 @@ RECOMMENDED_INSTALL = true
 OPTIONAL_INSTALL = true
 
 brisk_nodes = search(:node, "role:#{node[:setup][:current_role]}")
-if !node[:brisk][:token_position]
+if node[:brisk][:token_position] == false
   node[:brisk][:token_position] = brisk_nodes.count
 end
+
+brisk_nodes_array = []
+for i in (0..brisk_nodes.count-1)
+  brisk_nodes_array << [ brisk_nodes[i][:cloud][:local_hostname], brisk_nodes[i][:cloud][:private_ips].first ]
+end
+brisk_nodes_array = brisk_nodes_array.sort_by{|node| node[1]}
+Chef::Log.info "Currently seen nodes: #{brisk_nodes_array.inspect}"
 
 installOpscenter = false
 if !(node[:platform] == "fedora")
@@ -49,6 +56,7 @@ if !(node[:platform] == "fedora")
     installOpscenter = true
   end
 end
+
 
 ###################################################
 # 
@@ -342,7 +350,7 @@ end
 # 
 ###################################################
 
-if !:initial_token
+if node[:brisk][:initial_token] == false
   cookbook_file "/tmp/tokentool.py" do
     source "tokentool.py"
     mode "0755"
@@ -360,7 +368,7 @@ if !:initial_token
       end
 
       Chef::Log.info "Setting token to be: #{results[node[:brisk][:token_position]]}"
-      node[:brisk][:initial_token] = results[node[:brisk][:token_position]] unless node[:brisk][:initial_token] > 0
+      node[:brisk][:initial_token] = results[node[:brisk][:token_position]]
     end
   end
 end
@@ -372,7 +380,7 @@ end
 # 
 ###################################################
 
-if !node[:brisk][:seed]
+if node[:brisk][:seed] == false
   seeds = []
 
   # Pull the seeds from the chef db
@@ -383,7 +391,7 @@ if !node[:brisk][:seed]
   else
     # Add the first node as a seed
     Chef::Log.info "[SEEDS] Add the first node."
-    seeds << brisk_nodes[0][:cloud][:private_ips].first
+    seeds << brisk_nodes_array[0][1]
 
     # Add this node as a seed since this is the first tasktracker node
     if brisk_nodes.count == node[:setup][:vanilla_nodes]
@@ -393,8 +401,8 @@ if !node[:brisk][:seed]
 
     # Add the first node in the second DC
     if (brisk_nodes.count > node[:setup][:vanilla_nodes]) and !(node[:setup][:vanilla_nodes] == 0)
-      Chef::Log.info "[SEEDS] Add the first node."
-      seeds << brisk_nodes[node[:setup][:vanilla_nodes]][:cloud][:private_ips].first
+      Chef::Log.info "[SEEDS] Add the first node of DC2."
+      seeds << brisk_nodes_array[Integer(node[:setup][:vanilla_nodes])][1]
     end
   end
 else
