@@ -39,8 +39,8 @@ RECOMMENDED_INSTALL = true
 OPTIONAL_INSTALL = true
 
 brisk_nodes = search(:node, "role:#{node[:setup][:current_role]}")
-if node[:brisk][:token_position] == false
-  node[:brisk][:token_position] = brisk_nodes.count
+if node[:cassandra][:token_position] == false
+  node[:cassandra][:token_position] = brisk_nodes.count
 end
 
 brisk_nodes_array = []
@@ -52,7 +52,7 @@ Chef::Log.info "Currently seen nodes: #{brisk_nodes_array.inspect}"
 
 installOpscenter = false
 if !(node[:platform] == "fedora")
-  if node[:opscenter][:user] and node[:opscenter][:pass] and node[:brisk][:token_position] == 0
+  if node[:opscenter][:install] and node[:opscenter][:user] and node[:opscenter][:pass] and node[:cassandra][:token_position] == 0
     installOpscenter = true
   end
 end
@@ -350,13 +350,13 @@ end
 # 
 ###################################################
 
-if node[:brisk][:initial_token] == false
+if node[:cassandra][:initial_token] == false
   cookbook_file "/tmp/tokentool.py" do
     source "tokentool.py"
     mode "0755"
   end
 
-  execute "/tmp/tokentool.py #{node[:setup][:vanilla_nodes]} #{node[:setup][:cluster_size] - node[:setup][:vanilla_nodes]} > /tmp/tokens" do
+  execute "/tmp/tokentool.py #{node[:brisk][:vanilla_nodes]} #{node[:setup][:cluster_size] - node[:brisk][:vanilla_nodes]} > /tmp/tokens" do
     creates "/tmp/tokens"
   end
 
@@ -367,8 +367,8 @@ if node[:brisk][:initial_token] == false
         results << line.split(':')[1].strip if line.include? 'Node'
       end
 
-      Chef::Log.info "Setting token to be: #{results[node[:brisk][:token_position]]}"
-      node[:brisk][:initial_token] = results[node[:brisk][:token_position]]
+      Chef::Log.info "Setting token to be: #{results[node[:cassandra][:token_position]]}"
+      node[:cassandra][:initial_token] = results[node[:cassandra][:token_position]]
     end
   end
 end
@@ -380,7 +380,7 @@ end
 # 
 ###################################################
 
-if node[:brisk][:seed] == false
+if node[:cassandra][:seed] == false
   seeds = []
 
   # Pull the seeds from the chef db
@@ -394,19 +394,19 @@ if node[:brisk][:seed] == false
     seeds << brisk_nodes_array[0][1]
 
     # Add this node as a seed since this is the first tasktracker node
-    if brisk_nodes.count == node[:setup][:vanilla_nodes]
+    if brisk_nodes.count == node[:brisk][:vanilla_nodes]
       Chef::Log.info "[SEEDS] Add this node since it's the first TaskTracker node."
       seeds << node[:cloud][:private_ips].first
     end
 
     # Add the first node in the second DC
-    if (brisk_nodes.count > node[:setup][:vanilla_nodes]) and !(node[:setup][:vanilla_nodes] == 0)
+    if (brisk_nodes.count > node[:brisk][:vanilla_nodes]) and !(node[:brisk][:vanilla_nodes] == 0)
       Chef::Log.info "[SEEDS] Add the first node of DC2."
-      seeds << brisk_nodes_array[Integer(node[:setup][:vanilla_nodes])][1]
+      seeds << brisk_nodes_array[Integer(node[:brisk][:vanilla_nodes])][1]
     end
   end
 else
-  seeds = node[:brisk][:seed].gsub(/ /,'').split(",")
+  seeds = node[:cassandra][:seed].gsub(/ /,'').split(",")
 end
 
 Chef::Log.info "[SEEDS] Chosen seeds: " << seeds.inspect
@@ -422,7 +422,7 @@ ruby_block "buildBriskFile" do
   block do
     filename = "/etc/default/brisk"
     briskFile = File.read(filename)
-    if node[:brisk][:token_position] < node[:setup][:vanilla_nodes]
+    if node[:cassandra][:token_position] < node[:brisk][:vanilla_nodes]
       briskFile = briskFile.gsub(/HADOOP_ENABLED=1/, "HADOOP_ENABLED=0")
     else
       briskFile = briskFile.gsub(/HADOOP_ENABLED=0/, "HADOOP_ENABLED=1")
@@ -447,14 +447,14 @@ ruby_block "buildCassandraYaml" do
   block do
     filename = "/etc/brisk/cassandra/cassandra.yaml"
     cassandraYaml = File.read(filename)
-    cassandraYaml = cassandraYaml.gsub(/cluster_name:.*/,               "cluster_name: '#{node[:brisk][:cluster_name]}'")
-    cassandraYaml = cassandraYaml.gsub(/initial_token:.*/,              "initial_token: #{node[:brisk][:initial_token]}")
-    cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/data/,         "#{node[:brisk][:data_dir]}/cassandra/data")
-    cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/commitlog/,    "#{node[:brisk][:commitlog_dir]}/cassandra/commitlog")
-    cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/saved_caches/, "#{node[:brisk][:data_dir]}/cassandra/saved_caches")
+    cassandraYaml = cassandraYaml.gsub(/cluster_name:.*/,               "cluster_name: '#{node[:cassandra][:cluster_name]}'")
+    cassandraYaml = cassandraYaml.gsub(/initial_token:.*/,              "initial_token: #{node[:cassandra][:initial_token]}")
+    cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/data/,         "#{node[:cassandra][:data_dir]}/cassandra/data")
+    cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/commitlog/,    "#{node[:cassandra][:commitlog_dir]}/cassandra/commitlog")
+    cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/saved_caches/, "#{node[:cassandra][:data_dir]}/cassandra/saved_caches")
     cassandraYaml = cassandraYaml.gsub(/seeds:.*/,                      "seeds: \"#{seeds.join(",")}\"")
     cassandraYaml = cassandraYaml.gsub(/listen_address:.*/,             "listen_address: #{node[:cloud][:private_ips].first}")
-    cassandraYaml = cassandraYaml.gsub(/rpc_address:.*/,                "rpc_address: #{node[:brisk][:rpc_address]}")
+    cassandraYaml = cassandraYaml.gsub(/rpc_address:.*/,                "rpc_address: #{node[:cassandra][:rpc_address]}")
     cassandraYaml = cassandraYaml.gsub(/endpoint_snitch:.*/,            "endpoint_snitch: #{node[:brisk][:endpoint_snitch]}")
     File.open(filename, 'w') {|f| f.write(cassandraYaml) }
   end
@@ -483,7 +483,7 @@ end
 
 ruby_block "OpsCenterResponse" do
   block do
-    if node[:opscenter][:user] and node[:opscenter][:pass] and node[:brisk][:token_position] == 0 and node[:platform] == "fedora"
+    if node[:opscenter][:user] and node[:opscenter][:pass] and node[:cassandra][:token_position] == 0 and node[:platform] == "fedora"
       Chef::Log.info "Sorry, OpsCenter does not support Fedora."
     end
   end
