@@ -4,7 +4,7 @@ default[:setup][:cluster_size] = 4
 default[:setup][:current_role] = "brisk"
 
 # A unique name is perferred to stop the risk of 
-default[:cassandra][:cluster_name] = "Brisk Cluster"
+default[:cassandra][:cluster_name] = "Cassandra Cluster"
 
 # Brisk settings
 default[:brisk][:vanilla_nodes] = 2
