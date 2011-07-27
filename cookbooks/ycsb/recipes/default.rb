@@ -38,6 +38,15 @@ case node[:platform]
     # Ensure all native components are up to date
     execute 'sudo apt-get -y upgrade'
 
+    # Adds the Sun Java repo:
+    # deb http://archive.canonical.com lucid partner
+    apt_repository "sun-java6-jdk" do
+      uri "http://archive.canonical.com"
+      distribution "lucid"
+      components ["partner"]
+      action :add
+    end
+
     # Allow for non-interactive Sun Java setup
     execute 'echo "sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true" | sudo debconf-set-selections'
     package "sun-java6-jdk"
