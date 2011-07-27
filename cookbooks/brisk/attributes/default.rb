@@ -1,4 +1,5 @@
 # Needed for the Chef script to function properly
+default[:setup][:deployment] = "brisk"	# Choices are "07x", "08x", or "brisk"
 default[:setup][:cluster_size] = 4
 default[:setup][:current_role] = "brisk"
 
@@ -27,5 +28,6 @@ default[:cassandra][:rpc_address] = "0.0.0.0"
 default[:brisk][:endpoint_snitch] = "org.apache.cassandra.locator.BriskSimpleSnitch"
 
 # Advanced OpsCenter settings
-default[:opscenter][:port] = 7199
+default[:opscenter][:portin08] = 7199
+default[:opscenter][:portin07] = 8080
 default[:opscenter][:interface] = "0.0.0.0"

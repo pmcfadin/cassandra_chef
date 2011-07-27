@@ -13,9 +13,14 @@
 # 
 ###################################################
 
-# Stop Brisk and OpsCenter if they are running.
+# Stop Cassandra and OpsCenter if they are running.
 # Different for Debian due to service package.
 if node[:platform] == "debian"
+  service "cassandra" do
+    action :stop
+    ignore_failure true
+  end
+
   service "brisk" do
     action :stop
     ignore_failure true
@@ -26,6 +31,10 @@ if node[:platform] == "debian"
     ignore_failure true
   end
 else
+  service "cassandra" do
+    action :stop
+  end
+
   service "brisk" do
     action :stop
   end
@@ -35,21 +44,33 @@ else
   end
 end
 
-RECOMMENDED_INSTALL = true
+REQUIRED_INSTALL = true
 OPTIONAL_INSTALL = true
 
-brisk_nodes = search(:node, "role:#{node[:setup][:current_role]}")
+# Find the position of the current node in the ring
+cluster_nodes = search(:node, "role:#{node[:setup][:current_role]}")
 if node[:cassandra][:token_position] == false
-  node[:cassandra][:token_position] = brisk_nodes.count
+  node[:cassandra][:token_position] = cluster_nodes.count
 end
 
-brisk_nodes_array = []
-for i in (0..brisk_nodes.count-1)
-  brisk_nodes_array << [ brisk_nodes[i][:cloud][:local_hostname], brisk_nodes[i][:cloud][:private_ips].first ]
+# Find all cluster node IP addresses
+cluster_nodes_array = []
+for i in (0..cluster_nodes.count-1)
+  # cluster_nodes_array << [ cluster_nodes[i][:cloud][:local_hostname], cluster_nodes[i][:cloud][:private_ips].first ]
+  cluster_nodes_array << [ cluster_nodes[i][:ohai_time], cluster_nodes[i][:cloud][:private_ips].first ]
 end
-brisk_nodes_array = brisk_nodes_array.sort_by{|node| node[1]}
-Chef::Log.info "Currently seen nodes: #{brisk_nodes_array.inspect}"
+cluster_nodes_array = cluster_nodes_array.sort_by{|node| node[0]}
+Chef::Log.info "Currently seen nodes: #{cluster_nodes_array.inspect}"
 
+# Configure the Cassandra conf directory location
+confPath = ""
+if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x":
+  confPath = "/etc/cassandra/"
+elsif node[:setup][:deployment] == "brisk":
+  confPath = "/etc/brisk/cassandra/"
+end
+
+# Find if OpsCenter will be installed in this chef script
 installOpscenter = false
 if !(node[:platform] == "fedora")
   if node[:opscenter][:install] and node[:opscenter][:user] and node[:opscenter][:pass] and node[:cassandra][:token_position] == 0
@@ -68,6 +89,7 @@ case node[:platform]
   when "ubuntu", "debian"
     include_recipe "apt"
 
+    # Find package codenames
     codename = ""
     if node[:platform] == "debian"
       if node[:platform_version] == "6.0"
@@ -77,6 +99,18 @@ case node[:platform]
       end
     else
       codename = node['lsb']['codename']
+    end
+
+    # Adds the Cassandra repo:
+    # deb http://www.apache.org/dist/cassandra/debian <07x|08x> main
+    if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x":
+      apt_repository "datastax-repo" do
+        uri "http://www.apache.org/dist/cassandra/debian"
+        components [node[:setup][:deployment], "main"]
+        keyserver "pgp.mit.edu"
+        key "2B5C1B00"
+        action :add
+      end
     end
 
     # Adds the DataStax repo:
@@ -180,11 +214,11 @@ end
 
 ###################################################
 # 
-# Install the Highly Recommended Packages
+# Install the Required Packages
 # 
 ###################################################
 
-if RECOMMENDED_INSTALL
+if REQUIRED_INSTALL
   case node[:platform]
     when "ubuntu", "debian"
       # Ensure all native components are up to date
@@ -203,7 +237,7 @@ if RECOMMENDED_INSTALL
         action :remove
       end
       
-      # Install JNA and the LZO compressor for Brisk
+      # Install JNA and the LZO compressor for Cassandra and Brisk
       package "libjna-java"
       package "liblzo2-dev"
       
@@ -258,7 +292,7 @@ end
 
 ###################################################
 # 
-# Install Brisk [and OpsCenter]
+# Install Cassandra or Brisk [and OpsCenter]
 # 
 ###################################################
 
@@ -267,16 +301,42 @@ execute "clear-data" do
   action :nothing
 end
 
-# Install Brisk
-package "brisk-full" do
-  notifies :stop, resources(:service => "brisk"), :immediately
-  notifies :run, resources(:execute => "clear-data"), :immediately
+if node[:setup][:deployment] == "07x":
+  # Install Cassandra
+  package "cassandra" do
+    notifies :stop, resources(:service => "cassandra"), :immediately
+    notifies :run, resources(:execute => "clear-data"), :immediately
+  end
 end
 
-# Install Brisk Demos
-package "brisk-demos" do
-  notifies :stop, resources(:service => "brisk"), :immediately
-  notifies :run, resources(:execute => "clear-data"), :immediately
+if node[:setup][:deployment] == "08x":
+  case node[:platform]
+    when "ubuntu", "debian"
+      package "cassandra" do
+        notifies :stop, resources(:service => "cassandra"), :immediately
+        notifies :run, resources(:execute => "clear-data"), :immediately
+      end
+    when "centos", "redhat", "fedora"
+      # Install Cassandra
+      package "cassandra08" do
+        notifies :stop, resources(:service => "cassandra08"), :immediately
+        notifies :run, resources(:execute => "clear-data"), :immediately
+      end
+  end
+end
+
+if node[:setup][:deployment] == "brisk":
+  # Install Brisk
+  package "brisk-full" do
+    notifies :stop, resources(:service => "brisk"), :immediately
+    notifies :run, resources(:execute => "clear-data"), :immediately
+  end
+
+  # Install Brisk Demos
+  package "brisk-demos" do
+    notifies :stop, resources(:service => "brisk"), :immediately
+    notifies :run, resources(:execute => "clear-data"), :immediately
+  end
 end
 
 # Install OpsCenter
@@ -356,8 +416,14 @@ if node[:cassandra][:initial_token] == false
     mode "0755"
   end
 
-  execute "/tmp/tokentool.py #{node[:brisk][:vanilla_nodes]} #{node[:setup][:cluster_size] - node[:brisk][:vanilla_nodes]} > /tmp/tokens" do
-    creates "/tmp/tokens"
+  if node[:setup][:deployment] == "brisk"
+    execute "/tmp/tokentool.py #{node[:brisk][:vanilla_nodes]} #{node[:setup][:cluster_size] - node[:brisk][:vanilla_nodes]} > /tmp/tokens" do
+      creates "/tmp/tokens"
+    end
+  else
+    execute "/tmp/tokentool.py #{node[:setup][:cluster_size]} > /tmp/tokens" do
+      creates "/tmp/tokens"
+    end
   end
 
   ruby_block "ReadTokens" do
@@ -384,25 +450,27 @@ if node[:cassandra][:seed] == false
   seeds = []
 
   # Pull the seeds from the chef db
-  if brisk_nodes.count == 0
+  if cluster_nodes.count == 0
     # Add this node as a seed since this is the first node
     Chef::Log.info "[SEEDS] First node chooses itself."
     seeds << node[:cloud][:private_ips].first
   else
     # Add the first node as a seed
     Chef::Log.info "[SEEDS] Add the first node."
-    seeds << brisk_nodes_array[0][1]
+    seeds << cluster_nodes_array[0][1]
 
-    # Add this node as a seed since this is the first tasktracker node
-    if brisk_nodes.count == node[:brisk][:vanilla_nodes]
-      Chef::Log.info "[SEEDS] Add this node since it's the first TaskTracker node."
-      seeds << node[:cloud][:private_ips].first
-    end
+    if node[:setup][:deployment] == "brisk":
+      # Add this node as a seed since this is the first tasktracker node
+      if cluster_nodes.count == node[:brisk][:vanilla_nodes]
+        Chef::Log.info "[SEEDS] Add this node since it's the first TaskTracker node."
+        seeds << node[:cloud][:private_ips].first
+      end
 
-    # Add the first node in the second DC
-    if (brisk_nodes.count > node[:brisk][:vanilla_nodes]) and !(node[:brisk][:vanilla_nodes] == 0)
-      Chef::Log.info "[SEEDS] Add the first node of DC2."
-      seeds << brisk_nodes_array[Integer(node[:brisk][:vanilla_nodes])][1]
+      # Add the first node in the second DC
+      if (cluster_nodes.count > node[:brisk][:vanilla_nodes]) and !(node[:brisk][:vanilla_nodes] == 0)
+        Chef::Log.info "[SEEDS] Add the first node of DC2."
+        seeds << cluster_nodes_array[Integer(node[:brisk][:vanilla_nodes])][1]
+      end
     end
   end
 else
@@ -418,24 +486,26 @@ Chef::Log.info "[SEEDS] Chosen seeds: " << seeds.inspect
 # 
 ###################################################
 
-ruby_block "buildBriskFile" do
-  block do
-    filename = "/etc/default/brisk"
-    briskFile = File.read(filename)
-    if node[:cassandra][:token_position] < node[:brisk][:vanilla_nodes]
-      briskFile = briskFile.gsub(/HADOOP_ENABLED=1/, "HADOOP_ENABLED=0")
-    else
-      briskFile = briskFile.gsub(/HADOOP_ENABLED=0/, "HADOOP_ENABLED=1")
+if node[:setup][:deployment] == "brisk":
+  ruby_block "buildBriskFile" do
+    block do
+      filename = "/etc/default/brisk"
+      briskFile = File.read(filename)
+      if node[:cassandra][:token_position] < node[:brisk][:vanilla_nodes]
+        briskFile = briskFile.gsub(/HADOOP_ENABLED=1/, "HADOOP_ENABLED=0")
+      else
+        briskFile = briskFile.gsub(/HADOOP_ENABLED=0/, "HADOOP_ENABLED=1")
+      end
+      File.open(filename, 'w') {|f| f.write(briskFile) }
     end
-    File.open(filename, 'w') {|f| f.write(briskFile) }
+    action :create
+    notifies :run, resources(:execute => "clear-data"), :immediately
   end
-  action :create
-  notifies :run, resources(:execute => "clear-data"), :immediately
 end
 
 ruby_block "buildCassandraEnv" do
   block do
-    filename = "/etc/brisk/cassandra/cassandra-env.sh"
+    filename = confPath + "cassandra-env.sh"
     cassandraEnv = File.read(filename)
     cassandraEnv = cassandraEnv.gsub(/# JVM_OPTS="\$JVM_OPTS -Djava.rmi.server.hostname=<public name>"/, "JVM_OPTS=\"\$JVM_OPTS -Djava.rmi.server.hostname=#{node[:cloud][:private_ips].first}\"")
     File.open(filename, 'w') {|f| f.write(cassandraEnv) }
@@ -445,7 +515,7 @@ end
 
 ruby_block "buildCassandraYaml" do
   block do
-    filename = "/etc/brisk/cassandra/cassandra.yaml"
+    filename = confPath + "cassandra.yaml"
     cassandraYaml = File.read(filename)
     cassandraYaml = cassandraYaml.gsub(/cluster_name:.*/,               "cluster_name: '#{node[:cassandra][:cluster_name]}'")
     cassandraYaml = cassandraYaml.gsub(/initial_token:.*/,              "initial_token: #{node[:cassandra][:initial_token]}")
@@ -455,11 +525,17 @@ ruby_block "buildCassandraYaml" do
     cassandraYaml = cassandraYaml.gsub(/seeds:.*/,                      "seeds: \"#{seeds.join(",")}\"")
     cassandraYaml = cassandraYaml.gsub(/listen_address:.*/,             "listen_address: #{node[:cloud][:private_ips].first}")
     cassandraYaml = cassandraYaml.gsub(/rpc_address:.*/,                "rpc_address: #{node[:cassandra][:rpc_address]}")
-    cassandraYaml = cassandraYaml.gsub(/endpoint_snitch:.*/,            "endpoint_snitch: #{node[:brisk][:endpoint_snitch]}")
+    if node[:setup][:deployment] == "brisk":
+      cassandraYaml = cassandraYaml.gsub(/endpoint_snitch:.*/,            "endpoint_snitch: #{node[:brisk][:endpoint_snitch]}")
+    end
     File.open(filename, 'w') {|f| f.write(cassandraYaml) }
   end
   action :create
-  notifies :restart, resources(:service => "brisk"), :immediately
+  if node[:setup][:deployment] == "brisk"
+    notifies :restart, resources(:service => "brisk"), :immediately
+  else
+    notifies :restart, resources(:service => "cassandra"), :immediately
+  end
 end
 
 ruby_block "buildOpscenterdConf" do
@@ -467,10 +543,20 @@ ruby_block "buildOpscenterdConf" do
     filename = "/etc/opscenter/opscenterd.conf"
     if File::exists?(filename)
       opscenterdConf = File.read(filename)
-      opscenterdConf = opscenterdConf.gsub(/port = 8080/,        "port = #{node[:opscenter][:port]}")
+      
+      if node[:setup][:deployment] == "07x"
+        opscenterdConf = opscenterdConf.gsub(/port = 7199/,        "port = #{node[:opscenter][:portin07]}")
+      else
+        opscenterdConf = opscenterdConf.gsub(/port = 7199/,        "port = #{node[:opscenter][:portin08]}")
+      end
+
       opscenterdConf = opscenterdConf.gsub(/interface =.*/,   "interface = #{node[:opscenter][:interface]}")
       opscenterdConf = opscenterdConf.gsub(/seed_hosts =.*/,  "seed_hosts = #{node[:cloud][:private_ips].first}")
-      Chef::Log.info "Waiting 60 seconds for Brisk to initialize, then start OpsCenter"
+      if node[:setup][:deployment] == "brisk"
+        Chef::Log.info "Waiting 60 seconds for Brisk to initialize, then start OpsCenter"
+      else
+        Chef::Log.info "Waiting 60 seconds for Cassandra to initialize, then start OpsCenter"
+      end
       File.open(filename, 'w') {|f| f.write(opscenterdConf) }
       sleep 60
     end

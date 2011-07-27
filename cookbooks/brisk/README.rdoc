@@ -41,12 +41,19 @@ You should see something similar to:
 
 The main attributes to look can be found at $CHEF_HOME/cookbooks/brisk/attributes/default.rb and are:
 
-    default[:setup][:vanilla_nodes] = 2
+    # Needed for the Chef script to function properly
+    default[:setup][:deployment] = "brisk"  # Choices are "07x", "08x", or "brisk"
     default[:setup][:cluster_size] = 4
     default[:setup][:current_role] = "brisk"
 
-    default[:brisk][:cluster_name] = "Brisk Cluster"
+    # A unique name is perferred to stop the risk of 
+    default[:cassandra][:cluster_name] = "Brisk Cluster"
 
+    # Brisk settings
+    default[:brisk][:vanilla_nodes] = 2
+
+    # OpsCenter settings
+    default[:opscenter][:install] = false
     default[:opscenter][:user] = false
     default[:opscenter][:pass] = false
     default[:opscenter][:free] = false
@@ -150,5 +157,5 @@ For a RedHat 5 Machine (Untested):
 
 This commands shows the json for a chosen machine that is accessible through the Chef script:
 
-    knife node show server01 --format json
+    knife node show Server01 --format json
 
