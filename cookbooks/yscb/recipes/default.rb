@@ -17,12 +17,14 @@
 cluster_nodes = search(:node, "role:#{node[:cassandra][:current_role]}")
 
 # Find all cluster node IP addresses
-cluster_nodes_array = []
+nodeIPcsv = ""
 for i in (0..cluster_nodes.count-1)
-  # cluster_nodes_array << [ cluster_nodes[i][:cloud][:local_hostname], cluster_nodes[i][:cloud][:private_ips].first ]
-  cluster_nodes_array << cluster_nodes[i][:cloud][:private_ips].first
+  if nodeIPcsv != ""
+    nodeIPcsv << ","
+  end
+  nodeIPcsv << cluster_nodes[i][:cloud][:private_ips].first
 end
-Chef::Log.info "Currently seen nodes: #{cluster_nodes_array.inspect}"
+Chef::Log.info "Currently seen nodes: #{nodeIPcsv}"
 
 
 ###################################################
@@ -31,9 +33,33 @@ Chef::Log.info "Currently seen nodes: #{cluster_nodes_array.inspect}"
 # 
 ###################################################
 
+case node[:platform]
+  when "ubuntu", "debian"
+    # Ensure all native components are up to date
+    execute 'sudo apt-get -y upgrade'
+
+    # Allow for non-interactive Sun Java setup
+    execute 'echo "sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true" | sudo debconf-set-selections'
+    package "sun-java6-jdk"
+
+    # Uninstall other Java Versions
+    execute 'sudo update-alternatives --set java /usr/lib/jvm/java-6-sun/jre/bin/java'
+    package "openjdk-6-jre-headless" do
+      action :remove
+    end
+    package "openjdk-6-jre-lib" do
+      action :remove
+    end
+    
+  when "centos", "redhat", "fedora"
+    # Ensure all native components are up to date
+    execute 'sudo yum -y update'
+    execute 'sudo yum -y upgrade'
+end
+
 package "git"
 package "ant"
-execute "git clone git://github.com/yourabi/YCSB.git"
+execute "git clone git://github.com/joaquincasares/YCSB.git"
 
 ###################################################
 # 
@@ -46,21 +72,62 @@ execute "ant"
 
 ###################################################
 # 
-# Remove the MOTD
+# Copy Cassandra Jars
 # 
 ###################################################
 
-execute "rm -rf /etc/motd"
-execute "touch /etc/motd"
-
+execute "git clone git://github.com/apache/cassandra.git"
+execute "cd cassandra"
+execute "git checkout tags/#{node[:cassandra][:tag]}"
+execute "ant jar"
+execute "cd lib"
+execute "cp *.jar ~/YCSB/db/#{node[:cassandra][:ycsb_tag]}/lib/"
 
 ###################################################
 # 
-# Creating RAID0
-# Insert optional personalized RAID code here
+# Prepare tests
 # 
 ###################################################
 
+execute "cd ~/YCSB"
+execute "ant dbcompile-#{node[:cassandra][:ycsb_tag]}"
+
+ruby_block "modifyWorkloadWithHosts" do
+  block do
+    filename = "~/YCSB/workloads/#{node[:ycsb][:workload]}"
+    workload = File.read(filename)
+    workload << "\nhosts=#{nodeIPcsv}"
+    File.open(filename, 'w') {|f| f.write(workload) }
+  end
+  action :create
+end
+
+###################################################
+# 
+# Run tests
+# 
+###################################################
+
+execute "cat workloads/#{node[:ycsb][:workload]} > #{node[:ycsb][:workload]}-load.stats"
+execute "cat workloads/#{node[:ycsb][:workload]} > #{node[:ycsb][:workload]}-test.stats"
+execute "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{node[:ycsb][:workload]} -s -load >> #{node[:ycsb][:workload]}-load.stats 2>&1"
+execute "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{node[:ycsb][:workload]} -s -t    >> #{node[:ycsb][:workload]}-test.stats 2>&1"
+
+###################################################
+# 
+# Print results
+# 
+###################################################
+
+Chef::Log.info "RESULTS FOR: #{node[:ycsb][:workload]}-load.stats"
+execute "grep RunTime #{node[:ycsb][:workload]}-load.stats"
+execute "grep Throughput #{node[:ycsb][:workload]}-load.stats"
+execute "grep AverageLatency #{node[:ycsb][:workload]}-load.stats"
+
+Chef::Log.info "RESULTS FOR: #{node[:ycsb][:workload]}-test.stats"
+execute "grep RunTime #{node[:ycsb][:workload]}-test.stats"
+execute "grep Throughput #{node[:ycsb][:workload]}-test.stats"
+execute "grep AverageLatency #{node[:ycsb][:workload]}-test.stats"
 
 ###################################################
 # 
@@ -75,25 +142,6 @@ execute "touch /etc/motd"
 # execute 'echo "* soft nofile 32768" | sudo tee -a /etc/security/limits.conf'
 # execute 'echo "* hard nofile 32768" | sudo tee -a /etc/security/limits.conf'
 
-###################################################
-# 
-# Calculate the Token
-# 
-###################################################
-
-
-###################################################
-# 
-# Build the Seed List
-# 
-###################################################
-
-
-###################################################
-# 
-# Write Configs and Start Services
-# 
-###################################################
 
 
 DataStaxWorkload = """
@@ -124,20 +172,4 @@ hosts=localhost
 #timeseries.granularity=2000
 
 #fieldlength=500
-"""
-
-runScript = """
-#!/bin/sh
-
-cat workloads/DataStaxWorkload > DataStaxWorkload-FullInserts.stats
-java -cp build/ycsb.jar:db/cassandra-0.7/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.CassandraClient7 -P workloads/DataStaxWorkload -s -load >> DataStaxWorkload-FullInserts.stats
-grep RunTime DataStaxWorkload-FullInserts.stats
-grep Throughput DataStaxWorkload-FullInserts.stats
-grep AverageLatency DataStaxWorkload-FullInserts.stats
-
-cat workloads/DataStaxWorkload > DataStaxWorkload-FullReads.stats
-java -cp build/ycsb.jar:db/cassandra-0.7/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.CassandraClient7 -P workloads/DataStaxWorkload -s -t >> DataStaxWorkload-FullReads.stats
-grep RunTime DataStaxWorkload-FullReads.stats
-grep Throughput DataStaxWorkload-FullReads.stats
-grep AverageLatency DataStaxWorkload-FullReads.stats
 """
