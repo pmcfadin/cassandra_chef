@@ -92,6 +92,25 @@ execute "cp *.jar ~/YCSB/db/#{node[:cassandra][:ycsb_tag]}/lib/"
 execute "cd ~/YCSB"
 execute "ant dbcompile-#{node[:cassandra][:ycsb_tag]}"
 
+cliCommand = "create column family ycsb with replication_factor=3;"
+execute "cassandra-cli -h localhost | {#cliCommand}"
+
+ruby_block "schemaPropagation" do
+  block do
+    Chef::Log.info "Waiting 10 seconds for Schema propagation..."
+    sleep 10
+  end
+  action :create
+end
+
+workloads = ["DataStaxInsertWorkload", "DataStaxReadWorkload", "DataStaxScanWorkload"]
+workloads.each do |workload|
+  cookbook_file "~/YCSB/workloads/{#workload}" do
+    source workload
+    mode "0644"
+  end
+end
+
 ruby_block "modifyWorkloadWithHosts" do
   block do
     filename = "~/YCSB/workloads/#{node[:ycsb][:workload]}"
@@ -141,35 +160,3 @@ execute "grep AverageLatency #{node[:ycsb][:workload]}-test.stats"
 # execute 'echo 1 | sudo tee /proc/sys/vm/overcommit_memory'
 # execute 'echo "* soft nofile 32768" | sudo tee -a /etc/security/limits.conf'
 # execute 'echo "* hard nofile 32768" | sudo tee -a /etc/security/limits.conf'
-
-
-
-DataStaxWorkload = """
-#   Default data size: 1 KB records (10 fields, 100 bytes each, plus key)
-#   Request distribution: zipfian
-
-recordcount=1000000
-operationcount=1000000
-workload=com.yahoo.ycsb.workloads.CoreWorkload
-
-readallfields=true
-
-readproportion=0
-updateproportion=0
-scanproportion=0
-insertproportion=1
-
-requestdistribution=zipfian
-
-#This is a consistent target for Cassandra from another machine pointing to a 6-node cluster.
-#target=6000
-
-threadcount=30
-columnfamily=data
-hosts=localhost
-
-#measurementtype=timeseries
-#timeseries.granularity=2000
-
-#fieldlength=500
-"""
