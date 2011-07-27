@@ -1,0 +1,106 @@
+= DESCRIPTION:
+
+This script launches a DataStax' Brisk cluster of a predetermined size. It also includes OpsCenter installation and Configuration support.
+
+This has been tested in Ubuntu 10.10 and CentOS 5.5, but should support your version of Ubuntu, CentOS, and RedHat.
+
+This script will be developed and housed at: https://github.com/riptano/chef. On every Brisk release, however, expect https://github.com/riptano/brisk to contain the newest version.
+
+= REQUIREMENTS:
+
+Follow the instructions as listed here: http://wiki.opscode.com/display/chef/Quick+Start.
+
+= ATTRIBUTES:
+
+
+= USAGE:
+
+== Configure roles
+
+Run this line from your default chef folder:
+
+    knife role create <role>
+
+where <role> is the value declared as default[:setup][:current_role]. Edit the file to look very similar to this:
+
+    {
+      "name": "brisk",
+      "default_attributes": {
+      },
+      "json_class": "Chef::Role",
+      "env_run_lists": {
+      },
+      "run_list": [
+        "recipe[brisk]"  # This is the line of importance
+      ],
+      "description": "",
+      "chef_type": "role",
+      "override_attributes": {
+      }
+    }
+
+== Starting up a cluster
+
+An Ubuntu 10.10 cloud in Rackspace:
+
+    knife rackspace server create -r "role[brisk]" -i 69 -f 6 -S Server01 -N Server01
+    knife rackspace server create -r "role[brisk]" -i 69 -f 6 -S Server02 -N Server02
+    knife rackspace server create -r "role[brisk]" -i 69 -f 6 -S Server03 -N Server03
+    knife rackspace server create -r "role[brisk]" -i 69 -f 6 -S Server04 -N Server04
+
+An Ubuntu 10.10 cloud in EC2:
+
+    pemname=<pemFileName>  # do not include ".pem"
+    group=<securityGroupName>
+    knife ec2 server create -r "role[brisk]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server01
+    knife ec2 server create -r "role[brisk]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server02
+    knife ec2 server create -r "role[brisk]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server03
+    knife ec2 server create -r "role[brisk]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server04
+
+NOTE: These AMIs only work in the US-East region. For all other regions, see http://cloud.ubuntu.com/ami/.
+
+A Debian 6.0 (Squeeze) cloud in Rackspace:
+
+    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server01 -N Server01
+    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server02 -N Server02
+    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server03 -N Server03
+    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server04 -N Server04
+
+A CentOS 5.5 cloud in Rackspace:
+
+    knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server01 -N Server01
+    knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server02 -N Server02
+    knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server03 -N Server03
+    knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server04 -N Server04
+
+NOTE: You can run these lines more times as long as the attributes are set properly. Also, these lines should be run consecutively and never in parallel.
+
+== Bootstrapping Commands
+
+In order to run bootstrapping commands, you must be able to complete a passwordless SSH login. Typically, by copying your ~/.ssh/id_rsa.pub key into the target machine's ~/.ssh/authorized_keys file, passwordless SSH should work. Search google for more information.
+
+For an Ubuntu/Debian Machine:
+
+    knife bootstrap -r recipe['brisk'] --sudo -x root <publicDNS>
+
+For an Ubuntu Machine on EC2:
+
+    knife bootstrap -r recipe['brisk'] --sudo -x ubuntu <publicDNS>
+
+For a CentOS 5 Machine:
+
+    knife bootstrap -r "recipe['brisk']" --sudo -x root -d centos5-gems <publicDNS>
+
+For a RedHat 5 Machine (Untested):
+
+    wget http://goo.gl/0k8mV -O- > ~/.chef/bootstrap/rhel5-rbel.erb
+    knife bootstrap --sudo -x root -d rhel5-rbel <publicDNS>
+    knife bootstrap -r recipe['brisk'] --sudo -x root -d rhel5-rbel <publicDNS>
+
+
+== Other Useful Debugging Commands
+
+This commands shows the json for a chosen machine that is accessible through the Chef script:
+
+    knife node show Server01 --format json
+
