@@ -18,7 +18,8 @@ requestdistribution=zipfian
 #target=6000
 
 threadcount=30
-columnfamily=ycsb
+table=usertable
+columnfamily=data
 
 #measurementtype=timeseries
 #timeseries.granularity=2000

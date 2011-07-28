@@ -13,6 +13,29 @@
 # 
 ###################################################
 
+# Declare applications
+if node[:platform] == "debian"
+  service "cassandra" do
+    action :stop
+    ignore_failure true
+  end
+
+  service "brisk" do
+    action :stop
+    ignore_failure true
+  end
+
+else
+  service "cassandra" do
+    action :stop
+  end
+
+  service "brisk" do
+    action :stop
+  end
+
+end
+
 # Find the position of the current node in the ring
 cluster_nodes = search(:node, "role:#{node[:cassandra][:current_role]}")
 
@@ -60,15 +83,76 @@ case node[:platform]
       action :remove
     end
     
+    # Adds the Cassandra repo:
+    # deb http://www.apache.org/dist/cassandra/debian <07x|08x> main
+    if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x":
+      apt_repository "datastax-repo" do
+        uri "http://www.apache.org/dist/cassandra/debian"
+        components [node[:setup][:deployment], "main"]
+        keyserver "pgp.mit.edu"
+        key "2B5C1B00"
+        action :add
+      end
+    end
+
   when "centos", "redhat", "fedora"
+    if node[:platform] == "fedora"
+      distribution="Fedora"
+    else
+      distribution="EL"
+    end
+
+    # Add the DataStax Repo
+    platformMajor = node[:platform_version].split(".")[0]
+    filename = "/etc/yum.repos.d/datastax.repo"
+    repoFile = "[datastax]" << "\n" <<
+               "name=DataStax Repo for Apache Cassandra" << "\n" <<
+               "baseurl=http://rpm.datastax.com/#{distribution}/#{platformMajor}" << "\n" <<
+               "enabled=1" << "\n" <<
+               "gpgcheck=0" << "\n"
+    File.open(filename, 'w') {|f| f.write(repoFile) }
+
+    # Install EPEL (Extra Packages for Enterprise Linux) repository
+    platformMajor = node[:platform_version].split(".")[0]
+    epelInstalled = File::exists?("/etc/yum.repos.d/epel.repo") or File::exists?("/etc/yum.repos.d/epel-testing.repo")
+    if !epelInstalled
+      case platformMajor
+        when "6"
+          execute "sudo rpm -Uvh http://download.fedora.redhat.com/pub/epel/6/#{node[:kernel][:machine]}/epel-release-6-5.noarch.rpm"
+        when "5"
+          execute "sudo rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/#{node[:kernel][:machine]}/epel-release-5-4.noarch.rpm"
+        when "4"
+          execute "sudo rpm -Uvh http://download.fedora.redhat.com/pub/epel/4/#{node[:kernel][:machine]}/epel-release-4-10.noarch.rpm"
+      end
+    end
+
     # Ensure all native components are up to date
+    execute "yum clean all"
     execute 'sudo yum -y update'
     execute 'sudo yum -y upgrade'
+
 end
 
 package "git"
 package "ant"
-execute "git clone git://github.com/joaquincasares/YCSB.git"
+
+# For Thrift building for Cassandra Testings
+package "ant"
+# package "make"
+# package "automake"
+# package "libtool"
+# package "libboost-dev"
+# package "libglib2.0-dev"
+# package "libgtk2.0-dev"
+# package "libevent-dev"
+# package "python-dev"
+# package "pkg-config"
+# package "libtool"
+# package "flex"
+# package "bison"
+# package "g++"
+# package "php5"
+
 
 ###################################################
 # 
@@ -76,8 +160,37 @@ execute "git clone git://github.com/joaquincasares/YCSB.git"
 # 
 ###################################################
 
-execute "cd YCSB"
-execute "ant"
+execute "git clone git://github.com/joaquincasares/YCSB.git ~/YCSB"
+execute "ant" do
+  command "ant"
+  cwd "#{node[:setup][:home]}/YCSB"
+end
+
+###################################################
+# 
+# Install Cassandra
+# 
+###################################################
+
+
+if node[:setup][:deployment] == "07x":
+  package "cassandra" do
+    notifies :stop, resources(:service => "cassandra"), :immediately
+  end
+end
+
+if node[:setup][:deployment] == "08x":
+  case node[:platform]
+    when "ubuntu", "debian"
+      package "cassandra" do
+        notifies :stop, resources(:service => "cassandra"), :immediately
+      end
+    when "centos", "redhat", "fedora"
+      package "cassandra08" do
+        notifies :stop, resources(:service => "cassandra08"), :immediately
+      end
+  end
+end
 
 ###################################################
 # 
@@ -85,12 +198,36 @@ execute "ant"
 # 
 ###################################################
 
-execute "git clone git://github.com/apache/cassandra.git"
-execute "cd cassandra"
-execute "git checkout tags/#{node[:cassandra][:tag]}"
-execute "ant jar"
-execute "cd lib"
-execute "cp *.jar ~/YCSB/db/#{node[:cassandra][:ycsb_tag]}/lib/"
+script "copyCassandraJars" do
+  interpreter "bash"
+  user "root"
+  cwd "#{node[:setup][:home]}"
+  code <<-EOH
+  git clone git://github.com/apache/cassandra.git
+  cd cassandra
+  git checkout tags/#{node[:cassandra][:tag]}
+  ant jar
+  cp build/*.jar #{node[:setup][:home]}/YCSB/db/#{node[:cassandra][:ycsb_tag]}/lib/
+  cp lib/*.jar #{node[:setup][:home]}/YCSB/db/#{node[:cassandra][:ycsb_tag]}/lib/
+  EOH
+end
+
+# script "copyThriftJars" do
+#   interpreter "bash"
+#   user "root"
+#   cwd "#{node[:setup][:home]}"
+#   code <<-EOH
+#   wget -q http://www.apache.org/dist/thrift/0.6.1/thrift-0.6.1.tar.gz
+#   tar zxf thrift-*.tar.gz
+#   cd thrift*
+#   ./configure
+#   make
+#   sudo make install
+#   cd lib/java
+#   ant
+#   cp build/*.jar #{node[:setup][:home]}/YCSB/db/#{node[:cassandra][:ycsb_tag]}/lib/
+#   EOH
+# end
 
 ###################################################
 # 
@@ -98,11 +235,26 @@ execute "cp *.jar ~/YCSB/db/#{node[:cassandra][:ycsb_tag]}/lib/"
 # 
 ###################################################
 
-execute "cd ~/YCSB"
-execute "ant dbcompile-#{node[:cassandra][:ycsb_tag]}"
+execute "buildYCSBModule" do
+  command "ant dbcompile-#{node[:cassandra][:ycsb_tag]}"
+  cwd "#{node[:setup][:home]}/YCSB"
+end
 
-cliCommand = "create column family ycsb with replication_factor=3;"
-execute "cassandra-cli -h localhost | {#cliCommand}"
+# Setup Cassandra testing keyspace
+script "setupCassandraTestingCF" do
+  interpreter "bash"
+  user "root"
+  cwd "#{node[:setup][:home]}"
+  code <<-EOH
+  cassandra-cli -h #{cluster_nodes[0][:cloud][:private_ips].first} <<EOF
+  create keyspace usertable 
+    with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
+    and strategy_options = [{replication_factor:3}];
+  use usertable;
+  create column family data;
+EOF
+  EOH
+end
 
 ruby_block "schemaPropagation" do
   block do
@@ -114,7 +266,7 @@ end
 
 workloads = ["DataStaxInsertWorkload", "DataStaxReadWorkload", "DataStaxScanWorkload"]
 workloads.each do |workload|
-  cookbook_file "~/YCSB/workloads/{#workload}" do
+  cookbook_file "#{node[:setup][:home]}/YCSB/workloads/" + workload do
     source workload
     mode "0644"
   end
@@ -122,12 +274,11 @@ end
 
 ruby_block "modifyWorkloadWithHosts" do
   block do
-    filename = "~/YCSB/workloads/#{node[:ycsb][:workload]}"
+    filename = "#{node[:setup][:home]}/YCSB/workloads/#{node[:ycsb][:workload]}"
     workload = File.read(filename)
-    workload << "\nhosts=#{nodeIPcsv}"
+    workload << "\nhosts=#{nodeIPcsv}\n"
     File.open(filename, 'w') {|f| f.write(workload) }
   end
-  action :create
 end
 
 ###################################################
@@ -136,10 +287,20 @@ end
 # 
 ###################################################
 
-execute "cat workloads/#{node[:ycsb][:workload]} > #{node[:ycsb][:workload]}-load.stats"
-execute "cat workloads/#{node[:ycsb][:workload]} > #{node[:ycsb][:workload]}-test.stats"
-execute "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{node[:ycsb][:workload]} -s -load >> #{node[:ycsb][:workload]}-load.stats 2>&1"
-execute "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{node[:ycsb][:workload]} -s -t    >> #{node[:ycsb][:workload]}-test.stats 2>&1"
+execute "cat ~/YCSB/workloads/#{node[:ycsb][:workload]} > ~/#{node[:ycsb][:workload]}-load.stats"
+execute "echo '====================================\n' >> ~/#{node[:ycsb][:workload]}-load.stats"
+execute "cat ~/YCSB/workloads/#{node[:ycsb][:workload]} > ~/#{node[:ycsb][:workload]}-test.stats"
+execute "echo '====================================\n' >> ~/#{node[:ycsb][:workload]}-test.stats"
+
+execute "runYCSBLoader" do
+  command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{node[:ycsb][:workload]} -s -load >> ~/#{node[:ycsb][:workload]}-load.stats 2>&1"
+  cwd "#{node[:setup][:home]}/YCSB"
+end
+
+execute "runYCSBTest" do
+  command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{node[:ycsb][:workload]} -s -t    >> ~/#{node[:ycsb][:workload]}-test.stats 2>&1"
+  cwd "#{node[:setup][:home]}/YCSB"
+end
 
 ###################################################
 # 
@@ -147,15 +308,22 @@ execute "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yah
 # 
 ###################################################
 
-Chef::Log.info "RESULTS FOR: #{node[:ycsb][:workload]}-load.stats"
-execute "grep RunTime #{node[:ycsb][:workload]}-load.stats"
-execute "grep Throughput #{node[:ycsb][:workload]}-load.stats"
-execute "grep AverageLatency #{node[:ycsb][:workload]}-load.stats"
-
-Chef::Log.info "RESULTS FOR: #{node[:ycsb][:workload]}-test.stats"
-execute "grep RunTime #{node[:ycsb][:workload]}-test.stats"
-execute "grep Throughput #{node[:ycsb][:workload]}-test.stats"
-execute "grep AverageLatency #{node[:ycsb][:workload]}-test.stats"
+script "printResults" do
+  interpreter "bash"
+  user "root"
+  cwd "#{node[:setup][:home]}"
+  code <<-EOH
+  echo "RESULTS FOR: #{node[:ycsb][:workload]}-load.stats"
+  grep RunTime #{node[:setup][:home]}/#{node[:ycsb][:workload]}-load.stats
+  grep Throughput #{node[:setup][:home]}/#{node[:ycsb][:workload]}-load.stats
+  grep AverageLatency #{node[:setup][:home]}/#{node[:ycsb][:workload]}-load.stats
+  echo
+  echo "RESULTS FOR: #{node[:ycsb][:workload]}-test.stats"
+  grep RunTime #{node[:setup][:home]}/#{node[:ycsb][:workload]}-test.stats
+  grep Throughput #{node[:setup][:home]}/#{node[:ycsb][:workload]}-test.stats
+  grep AverageLatency #{node[:setup][:home]}/#{node[:ycsb][:workload]}-test.stats
+  EOH
+end
 
 ###################################################
 # 
@@ -163,9 +331,4 @@ execute "grep AverageLatency #{node[:ycsb][:workload]}-test.stats"
 # 
 ###################################################
 
-# execute 'echo "export JAVA_HOME=/usr/lib/jvm/java-6-sun" | sudo -E tee -a ~/.bashrc'
-# execute 'echo "export JAVA_HOME=/usr/lib/jvm/java-6-sun" | sudo -E tee -a ~/.profile'
-# execute 'sudo bash -c "ulimit -n 32768"'
-# execute 'echo 1 | sudo tee /proc/sys/vm/overcommit_memory'
-# execute 'echo "* soft nofile 32768" | sudo tee -a /etc/security/limits.conf'
-# execute 'echo "* hard nofile 32768" | sudo tee -a /etc/security/limits.conf'
+execute "chown -R ubuntu:ubuntu ~/"

@@ -43,23 +43,23 @@ where <role> is the value declared as default[:setup][:current_role]. Edit the f
 
 An Ubuntu 10.10 cloud in Rackspace:
 
-    knife rackspace server create -r "role[ycsb]" -i 69 -f 6 -S YCSB -N YCSB
+    knife rackspace server create -r "role[ycsb]" -i 69 -f 7 -S YCSB -N YCSB
 
 An Ubuntu 10.10 YCSB server in EC2:
 
     pemname=<pemFileName>  # do not include ".pem"
     group=<securityGroupName>
-    knife ec2 server create -r "role[ycsb]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N YCSB
+    knife ec2 server create -r "role[ycsb]" -I ami-08f40561 --flavor m2.4xlarge -S $pemname -G $group -x ubuntu -N YCSB
 
 NOTE: These AMIs only work in the US-East region. For all other regions, see http://cloud.ubuntu.com/ami/.
 
 A Debian 6.0 (Squeeze) cloud in Rackspace:
 
-    knife rackspace server create -r "role[ycsb]" -i 75 -f 6 -S YCSB -N YCSB
+    knife rackspace server create -r "role[ycsb]" -i 75 -f 7 -S YCSB -N YCSB
 
 A CentOS 5.5 cloud in Rackspace:
 
-    knife rackspace server create -r "role[ycsb]" -i 51 -f 6 -d centos5-gems -S YCSB -N YCSB
+    knife rackspace server create -r "role[ycsb]" -i 51 -f 7 -d centos5-gems -S YCSB -N YCSB
 
 NOTE: You can run these lines more times as long as the attributes are set properly. Also, these lines should be run consecutively and never in parallel.
 

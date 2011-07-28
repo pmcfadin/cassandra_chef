@@ -302,7 +302,6 @@ execute "clear-data" do
 end
 
 if node[:setup][:deployment] == "07x":
-  # Install Cassandra
   package "cassandra" do
     notifies :stop, resources(:service => "cassandra"), :immediately
     notifies :run, resources(:execute => "clear-data"), :immediately
@@ -317,7 +316,6 @@ if node[:setup][:deployment] == "08x":
         notifies :run, resources(:execute => "clear-data"), :immediately
       end
     when "centos", "redhat", "fedora"
-      # Install Cassandra
       package "cassandra08" do
         notifies :stop, resources(:service => "cassandra08"), :immediately
         notifies :run, resources(:execute => "clear-data"), :immediately
