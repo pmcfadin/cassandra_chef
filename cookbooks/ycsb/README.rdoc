@@ -39,6 +39,43 @@ where <role> is the value declared as default[:setup][:current_role]. Edit the f
       }
     }
 
+    {
+      "name": "cassandra07",
+      "default_attributes": {
+      },
+      "json_class": "Chef::Role",
+      "env_run_lists": {
+      },
+      "run_list": [
+        "recipe[brisk]"
+      ],
+      "description": "",
+      "chef_type": "role",
+      "override_attributes": {
+        "setup": { "deployment": "07" },
+        "setup": { "current_role": "cassandra07" },
+      }
+    }
+
+    {
+      "name": "cassandra08",
+      "default_attributes": {
+      },
+      "json_class": "Chef::Role",
+      "env_run_lists": {
+      },
+      "run_list": [
+        "recipe[brisk]"
+      ],
+      "description": "",
+      "chef_type": "role",
+      "override_attributes": {
+        "setup": { "deployment": "08" },
+        "setup": { "current_role": "cassandra08" },
+      }
+    }
+
+
 == Starting up a cluster
 
 An Ubuntu 10.10 cloud in Rackspace:

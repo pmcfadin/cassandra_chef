@@ -44,6 +44,7 @@ else
   end
 end
 
+# Only for debug purposes
 REQUIRED_INSTALL = true
 OPTIONAL_INSTALL = true
 
@@ -56,7 +57,6 @@ end
 # Find all cluster node IP addresses
 cluster_nodes_array = []
 for i in (0..cluster_nodes.count-1)
-  # cluster_nodes_array << [ cluster_nodes[i][:cloud][:local_hostname], cluster_nodes[i][:cloud][:private_ips].first ]
   cluster_nodes_array << [ cluster_nodes[i][:ohai_time], cluster_nodes[i][:cloud][:private_ips].first ]
 end
 cluster_nodes_array = cluster_nodes_array.sort_by{|node| node[0]}
@@ -77,7 +77,6 @@ if !(node[:platform] == "fedora")
     installOpscenter = true
   end
 end
-
 
 ###################################################
 # 
@@ -103,7 +102,7 @@ case node[:platform]
 
     # Adds the Cassandra repo:
     # deb http://www.apache.org/dist/cassandra/debian <07x|08x> main
-    if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x":
+    if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x"
       apt_repository "datastax-repo" do
         uri "http://www.apache.org/dist/cassandra/debian"
         components [node[:setup][:deployment], "main"]
@@ -296,11 +295,14 @@ end
 # 
 ###################################################
 
+# Used to clear any system information that may have
+# been created when the service autostarts
 execute "clear-data" do
   command "rm -rf /var/lib/cassandra/data/system"
   action :nothing
 end
 
+# Installs the latest Cassandra 0.7.x
 if node[:setup][:deployment] == "07x":
   package "cassandra" do
     notifies :stop, resources(:service => "cassandra"), :immediately
@@ -308,6 +310,7 @@ if node[:setup][:deployment] == "07x":
   end
 end
 
+# Installs the latest Cassandra 0.8.x
 if node[:setup][:deployment] == "08x":
   case node[:platform]
     when "ubuntu", "debian"
@@ -323,6 +326,7 @@ if node[:setup][:deployment] == "08x":
   end
 end
 
+# Installs the latest DataStax' Brisk
 if node[:setup][:deployment] == "brisk":
   # Install Brisk
   package "brisk-full" do
@@ -337,13 +341,12 @@ if node[:setup][:deployment] == "brisk":
   end
 end
 
-# Install OpsCenter
+# Installs the latest OpsCenter
 if installOpscenter
   package "opscenter" do
     notifies :stop, resources(:service => "opscenterd"), :immediately
   end
 end
-
 
 ###################################################
 # 
@@ -353,7 +356,6 @@ end
 
 execute "rm -rf /etc/motd"
 execute "touch /etc/motd"
-
 
 ###################################################
 # 
@@ -378,7 +380,6 @@ execute "touch /etc/motd"
 #   fstype "ext3"
 # end
 
-
 ###################################################
 # 
 # Additional Code
@@ -387,10 +388,12 @@ execute "touch /etc/motd"
 
 execute 'echo "export JAVA_HOME=/usr/lib/jvm/java-6-sun" | sudo -E tee -a ~/.bashrc'
 execute 'echo "export JAVA_HOME=/usr/lib/jvm/java-6-sun" | sudo -E tee -a ~/.profile'
-execute 'sudo bash -c "ulimit -n 32768"'
 execute 'echo 1 | sudo tee /proc/sys/vm/overcommit_memory'
+execute 'sudo bash -c "ulimit -n 32768"'
 execute 'echo "* soft nofile 32768" | sudo tee -a /etc/security/limits.conf'
 execute 'echo "* hard nofile 32768" | sudo tee -a /etc/security/limits.conf'
+execute 'sync'
+execute 'echo 3 > /proc/sys/vm/drop_caches'
 
 # Open ports for communications in Rackspace.
 # This is HORRIBLE security. 
@@ -401,7 +404,6 @@ if node[:cloud][:provider] == "rackspace" and node[:platform] == "centos"
   end
 end
 
-
 ###################################################
 # 
 # Calculate the Token
@@ -409,21 +411,26 @@ end
 ###################################################
 
 if node[:cassandra][:initial_token] == false
+
+  # Write tokentool to a an executable file
   cookbook_file "/tmp/tokentool.py" do
     source "tokentool.py"
     mode "0755"
   end
 
-  if node[:setup][:deployment] == "brisk"
-    execute "/tmp/tokentool.py #{node[:brisk][:vanilla_nodes]} #{node[:setup][:cluster_size] - node[:brisk][:vanilla_nodes]} > /tmp/tokens" do
-      creates "/tmp/tokens"
-    end
-  else
+  # Run tokentool accordingly
+  if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x"
     execute "/tmp/tokentool.py #{node[:setup][:cluster_size]} > /tmp/tokens" do
       creates "/tmp/tokens"
     end
   end
+  if node[:setup][:deployment] == "brisk"
+    execute "/tmp/tokentool.py #{node[:brisk][:vanilla_nodes]} #{node[:setup][:cluster_size] - node[:brisk][:vanilla_nodes]} > /tmp/tokens" do
+      creates "/tmp/tokens"
+    end
+  end
 
+  # Parse tokentool's output
   ruby_block "ReadTokens" do
     block do
       results = []
@@ -437,27 +444,30 @@ if node[:cassandra][:initial_token] == false
   end
 end
 
-
 ###################################################
 # 
 # Build the Seed List
 # 
 ###################################################
 
+# Calculate the seed list if not currently set
 if node[:cassandra][:seed] == false
   seeds = []
 
   # Pull the seeds from the chef db
   if cluster_nodes.count == 0
+
     # Add this node as a seed since this is the first node
     Chef::Log.info "[SEEDS] First node chooses itself."
     seeds << node[:cloud][:private_ips].first
   else
+    
     # Add the first node as a seed
     Chef::Log.info "[SEEDS] Add the first node."
     seeds << cluster_nodes_array[0][1]
 
-    if node[:setup][:deployment] == "brisk":
+    if node[:setup][:deployment] == "brisk"
+      
       # Add this node as a seed since this is the first tasktracker node
       if cluster_nodes.count == node[:brisk][:vanilla_nodes]
         Chef::Log.info "[SEEDS] Add this node since it's the first TaskTracker node."
@@ -470,13 +480,15 @@ if node[:cassandra][:seed] == false
         seeds << cluster_nodes_array[Integer(node[:brisk][:vanilla_nodes])][1]
       end
     end
+
   end
 else
+
+  # Parse the seedlist into an array, if provided
   seeds = node[:cassandra][:seed].gsub(/ /,'').split(",")
 end
 
 Chef::Log.info "[SEEDS] Chosen seeds: " << seeds.inspect
-
 
 ###################################################
 # 
@@ -484,7 +496,7 @@ Chef::Log.info "[SEEDS] Chosen seeds: " << seeds.inspect
 # 
 ###################################################
 
-if node[:setup][:deployment] == "brisk":
+if node[:setup][:deployment] == "brisk"
   ruby_block "buildBriskFile" do
     block do
       filename = "/etc/default/brisk"
@@ -520,23 +532,31 @@ ruby_block "buildCassandraYaml" do
     cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/data/,         "#{node[:cassandra][:data_dir]}/cassandra/data")
     cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/commitlog/,    "#{node[:cassandra][:commitlog_dir]}/cassandra/commitlog")
     cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/saved_caches/, "#{node[:cassandra][:data_dir]}/cassandra/saved_caches")
+    cassandraYaml = cassandraYaml.gsub(/listen_address:.*/,             "listen_address: #{node[:cloud][:private_ips].first}")
+    cassandraYaml = cassandraYaml.gsub(/rpc_address:.*/,                "rpc_address: #{node[:cassandra][:rpc_address]}")
+
+    # Cassandra 0.7.x has a slightly different Yaml
     if node[:setup][:deployment] == "07x"
       cassandraYaml = cassandraYaml.gsub(/- 127.0.0.1/,                 "- #{seeds[0]}")
     else
       cassandraYaml = cassandraYaml.gsub(/seeds:.*/,                    "seeds: \"#{seeds.join(",")}\"")
     end
-    cassandraYaml = cassandraYaml.gsub(/listen_address:.*/,             "listen_address: #{node[:cloud][:private_ips].first}")
-    cassandraYaml = cassandraYaml.gsub(/rpc_address:.*/,                "rpc_address: #{node[:cassandra][:rpc_address]}")
+    
+    # Change the endpoint_snitch for easier Brisk clustering
     if node[:setup][:deployment] == "brisk":
-      cassandraYaml = cassandraYaml.gsub(/endpoint_snitch:.*/,            "endpoint_snitch: #{node[:brisk][:endpoint_snitch]}")
+      cassandraYaml = cassandraYaml.gsub(/endpoint_snitch:.*/,          "endpoint_snitch: #{node[:brisk][:endpoint_snitch]}")
     end
+    
     File.open(filename, 'w') {|f| f.write(cassandraYaml) }
   end
   action :create
+
+  # Restart the service
+  if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x"
+    notifies :restart, resources(:service => "cassandra"), :immediately
+  end
   if node[:setup][:deployment] == "brisk"
     notifies :restart, resources(:service => "brisk"), :immediately
-  else
-    notifies :restart, resources(:service => "cassandra"), :immediately
   end
 end
 
@@ -545,30 +565,30 @@ ruby_block "buildOpscenterdConf" do
     filename = "/etc/opscenter/opscenterd.conf"
     if File::exists?(filename)
       opscenterdConf = File.read(filename)
-      
-      if node[:setup][:deployment] == "07x"
-        opscenterdConf = opscenterdConf.gsub(/port = 7199/,        "port = #{node[:opscenter][:portin07]}")
-      else
-        opscenterdConf = opscenterdConf.gsub(/port = 7199/,        "port = #{node[:opscenter][:portin08]}")
-      end
-
       opscenterdConf = opscenterdConf.gsub(/interface =.*/,   "interface = #{node[:opscenter][:interface]}")
       opscenterdConf = opscenterdConf.gsub(/seed_hosts =.*/,  "seed_hosts = #{node[:cloud][:private_ips].first}")
-      if node[:setup][:deployment] == "brisk"
-        Chef::Log.info "Waiting 60 seconds for Brisk to initialize, then start OpsCenter"
+      
+      # Cassandra 0.7.x connects under a different port
+      if node[:setup][:deployment] == "07x"
+        opscenterdConf = opscenterdConf.gsub(/port = 7199/,   "port = #{node[:opscenter][:portin07]}")
       else
-        Chef::Log.info "Waiting 60 seconds for Cassandra to initialize, then start OpsCenter"
+        opscenterdConf = opscenterdConf.gsub(/port = 7199/,   "port = #{node[:opscenter][:portin08]}")
       end
+
       File.open(filename, 'w') {|f| f.write(opscenterdConf) }
-      sleep 60
     end
   end
   action :create
+
+  # Wait for the cluster to initialize, then start OpsCenter
   if installOpscenter
+    Chef::Log.info "Waiting 60 seconds for the cluster to initialize, then start OpsCenter..."
+    sleep 60
     notifies :restart, resources(:service => "opscenterd"), :immediately
   end
 end
 
+# Print a fedora specific response
 ruby_block "OpsCenterResponse" do
   block do
     if node[:opscenter][:user] and node[:opscenter][:pass] and node[:cassandra][:token_position] == 0 and node[:platform] == "fedora"

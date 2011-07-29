@@ -19,21 +19,10 @@ if node[:platform] == "debian"
     action :stop
     ignore_failure true
   end
-
-  service "brisk" do
-    action :stop
-    ignore_failure true
-  end
-
 else
   service "cassandra" do
     action :stop
   end
-
-  service "brisk" do
-    action :stop
-  end
-
 end
 
 # Find the position of the current node in the ring
@@ -58,9 +47,6 @@ Chef::Log.info "Currently seen nodes: #{nodeIPcsv}"
 
 case node[:platform]
   when "ubuntu", "debian"
-    # Ensure all native components are up to date
-    execute 'sudo apt-get -y upgrade'
-
     # Adds the Sun Java repo:
     # deb http://archive.canonical.com lucid partner
     apt_repository "sun-java6-jdk" do
@@ -68,19 +54,6 @@ case node[:platform]
       distribution "lucid"
       components ["partner"]
       action :add
-    end
-
-    # Allow for non-interactive Sun Java setup
-    execute 'echo "sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true" | sudo debconf-set-selections'
-    package "sun-java6-jdk"
-
-    # Uninstall other Java Versions
-    execute 'sudo update-alternatives --set java /usr/lib/jvm/java-6-sun/jre/bin/java'
-    package "openjdk-6-jre-headless" do
-      action :remove
-    end
-    package "openjdk-6-jre-lib" do
-      action :remove
     end
     
     # Adds the Cassandra repo:
@@ -125,34 +98,40 @@ case node[:platform]
           execute "sudo rpm -Uvh http://download.fedora.redhat.com/pub/epel/4/#{node[:kernel][:machine]}/epel-release-4-10.noarch.rpm"
       end
     end
+end
 
+###################################################
+# 
+# Install System Packages
+# 
+###################################################
+
+case node[:platform]
+  when "ubuntu", "debian"
     # Ensure all native components are up to date
-    execute "yum clean all"
-    execute 'sudo yum -y update'
-    execute 'sudo yum -y upgrade'
+    execute 'sudo apt-get -y upgrade'
 
+    # Allow for non-interactive Sun Java setup
+    execute 'echo "sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true" | sudo debconf-set-selections'
+    package "sun-java6-jdk"
+
+    # Uninstall other Java Versions
+    execute 'sudo update-alternatives --set java /usr/lib/jvm/java-6-sun/jre/bin/java'
+    package "openjdk-6-jre-headless" do
+      action :remove
+    end
+    package "openjdk-6-jre-lib" do
+      action :remove
+    end
+  when "centos", "redhat", "fedora"
+      # Ensure all native components are up to date
+      execute "yum clean all"
+      execute 'sudo yum -y update'
+      execute 'sudo yum -y upgrade'
 end
 
 package "git"
 package "ant"
-
-# For Thrift building for Cassandra Testings
-package "ant"
-# package "make"
-# package "automake"
-# package "libtool"
-# package "libboost-dev"
-# package "libglib2.0-dev"
-# package "libgtk2.0-dev"
-# package "libevent-dev"
-# package "python-dev"
-# package "pkg-config"
-# package "libtool"
-# package "flex"
-# package "bison"
-# package "g++"
-# package "php5"
-
 
 ###################################################
 # 
@@ -212,29 +191,13 @@ script "copyCassandraJars" do
   EOH
 end
 
-# script "copyThriftJars" do
-#   interpreter "bash"
-#   user "root"
-#   cwd "#{node[:setup][:home]}"
-#   code <<-EOH
-#   wget -q http://www.apache.org/dist/thrift/0.6.1/thrift-0.6.1.tar.gz
-#   tar zxf thrift-*.tar.gz
-#   cd thrift*
-#   ./configure
-#   make
-#   sudo make install
-#   cd lib/java
-#   ant
-#   cp build/*.jar #{node[:setup][:home]}/YCSB/db/#{node[:cassandra][:ycsb_tag]}/lib/
-#   EOH
-# end
-
 ###################################################
 # 
 # Prepare tests
 # 
 ###################################################
 
+# Build YSCB testing components
 execute "buildYCSBModule" do
   command "ant dbcompile-#{node[:cassandra][:ycsb_tag]}"
   cwd "#{node[:setup][:home]}/YCSB"
@@ -256,6 +219,7 @@ EOF
   EOH
 end
 
+# Allow the keyspace to propagate to the rest of the cluster
 ruby_block "schemaPropagation" do
   block do
     Chef::Log.info "Waiting 10 seconds for Schema propagation..."
@@ -264,7 +228,8 @@ ruby_block "schemaPropagation" do
   action :create
 end
 
-workloads = ["DataStaxInsertWorkload", "DataStaxReadWorkload", "DataStaxScanWorkload"]
+# Write the custom DataStax workloads out
+workloads = node[:ycsb][:workloads]
 workloads.each do |workload|
   cookbook_file "#{node[:setup][:home]}/YCSB/workloads/" + workload do
     source workload
@@ -272,14 +237,45 @@ workloads.each do |workload|
   end
 end
 
+# Modify the custom Datastax workloads with the appropriate host names
 ruby_block "modifyWorkloadWithHosts" do
   block do
-    filename = "#{node[:setup][:home]}/YCSB/workloads/#{node[:ycsb][:workload]}"
-    workload = File.read(filename)
-    workload << "\nhosts=#{nodeIPcsv}\n"
-    File.open(filename, 'w') {|f| f.write(workload) }
+    workloads.each do |workloadName|
+      filename = "#{node[:setup][:home]}/YCSB/workloads/#{workloadName}"
+      workload = File.read(filename)
+      workload << "\nhosts=#{nodeIPcsv}\n"
+      File.open(filename, 'w') {|f| f.write(workload) }
+    end
   end
 end
+
+###################################################
+# 
+# Prime the cluster
+# 
+###################################################
+
+# Output the workload and starting ring information to a stats file
+execute "cat ~/YCSB/workloads/DataStaxInsertWorkload > ~/DataStaxWorkload-load.stats"
+execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
+execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/DataStaxWorkload-load.stats"
+execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
+
+# Run the preload
+execute "runYCSBLoader" do
+  command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/DataStaxInsertWorkload -s -load >> ~/DataStaxWorkload-load.stats 2>&1"
+  cwd "#{node[:setup][:home]}/YCSB"
+end
+
+# Output the ring information to a stats file
+execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
+execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/DataStaxWorkload-load.stats"
+
+# Print results
+execute "echo 'RESULTS FOR: DataStaxWorkload-load.stats' | tee ~/DataStaxWorkload-load-results.stats"
+execute "grep RunTime #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
+execute "grep Throughput #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
+execute "grep AverageLatency #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
 
 ###################################################
 # 
@@ -287,19 +283,30 @@ end
 # 
 ###################################################
 
-execute "cat ~/YCSB/workloads/#{node[:ycsb][:workload]} > ~/#{node[:ycsb][:workload]}-load.stats"
-execute "echo '====================================\n' >> ~/#{node[:ycsb][:workload]}-load.stats"
-execute "cat ~/YCSB/workloads/#{node[:ycsb][:workload]} > ~/#{node[:ycsb][:workload]}-test.stats"
-execute "echo '====================================\n' >> ~/#{node[:ycsb][:workload]}-test.stats"
+workloads.each do |workload|
+  # Output the workload and starting ring information to a stats file
+  execute "cat ~/YCSB/workloads/#{workload} > ~/#{workload}-test.stats"
+  execute "echo '====================================\n' >> ~/#{workload}-test.stats"
+  execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/#{workload}-test.stats"
+  execute "echo '====================================\n' >> ~/#{workload}-test.stats"
 
-execute "runYCSBLoader" do
-  command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{node[:ycsb][:workload]} -s -load >> ~/#{node[:ycsb][:workload]}-load.stats 2>&1"
-  cwd "#{node[:setup][:home]}/YCSB"
-end
+  # Run the preload
+  execute "runYCSBTest" do
+    command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{workload} -s -t    >> ~/#{workload}-test.stats 2>&1"
+    cwd "#{node[:setup][:home]}/YCSB"
+  end
 
-execute "runYCSBTest" do
-  command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{node[:ycsb][:workload]} -s -t    >> ~/#{node[:ycsb][:workload]}-test.stats 2>&1"
-  cwd "#{node[:setup][:home]}/YCSB"
+  # Output the ring information to a stats file
+  execute "echo '====================================\n' >> ~/#{workload}-load.stats"
+  execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/#{workload}-load.stats"
+  execute "echo '====================================\n' >> ~/#{workload}-test.stats"
+  execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/#{workload}-test.stats"
+
+  # Print results
+  execute "echo 'RESULTS FOR: #{workload}-test.stats' | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
+  execute "grep RunTime #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
+  execute "grep Throughput #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
+  execute "grep AverageLatency #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats"
 end
 
 ###################################################
@@ -308,22 +315,7 @@ end
 # 
 ###################################################
 
-script "printResults" do
-  interpreter "bash"
-  user "root"
-  cwd "#{node[:setup][:home]}"
-  code <<-EOH
-  echo "RESULTS FOR: #{node[:ycsb][:workload]}-load.stats"
-  grep RunTime #{node[:setup][:home]}/#{node[:ycsb][:workload]}-load.stats
-  grep Throughput #{node[:setup][:home]}/#{node[:ycsb][:workload]}-load.stats
-  grep AverageLatency #{node[:setup][:home]}/#{node[:ycsb][:workload]}-load.stats
-  echo
-  echo "RESULTS FOR: #{node[:ycsb][:workload]}-test.stats"
-  grep RunTime #{node[:setup][:home]}/#{node[:ycsb][:workload]}-test.stats
-  grep Throughput #{node[:setup][:home]}/#{node[:ycsb][:workload]}-test.stats
-  grep AverageLatency #{node[:setup][:home]}/#{node[:ycsb][:workload]}-test.stats
-  EOH
-end
+execute "cat ~/DataStaxWorkload-test-results.stats"
 
 ###################################################
 # 
