@@ -306,7 +306,7 @@ execute "grep AverageLatency #{node[:setup][:home]}/DataStaxWorkload-load.stats 
 
 workloads.each do |workload|
   # Output the workload and starting ring information to a stats file
-  execute "echo 'Testing #{[:cassandra][:tag]} with YCSB:#{[:cassandra][:ycsb_tag]}:#{workload}' > ~/#{workload}-test.stats"
+  execute "echo 'Testing #{node[:cassandra][:tag]} with YCSB:#{node[:cassandra][:ycsb_tag]}:#{workload}' > ~/#{workload}-test.stats"
   execute "cat ~/YCSB/workloads/#{workload} >> ~/#{workload}-test.stats"
   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
   execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/#{workload}-test.stats"
