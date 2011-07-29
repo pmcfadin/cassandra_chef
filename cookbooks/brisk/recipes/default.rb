@@ -496,6 +496,11 @@ Chef::Log.info "[SEEDS] Chosen seeds: " << seeds.inspect
 # 
 ###################################################
 
+execute "sudo mkdir -p #{node[:cassandra][:data_dir]}"
+execute "sudo mkdir -p #{node[:cassandra][:commitlog_dir]}"
+execute "sudo chown -R cassandra:cassandra #{node[:cassandra][:data_dir]}"
+execute "sudo chown -R cassandra:cassandra #{node[:cassandra][:commitlog_dir]}"
+
 if node[:setup][:deployment] == "brisk"
   ruby_block "buildBriskFile" do
     block do
@@ -509,7 +514,6 @@ if node[:setup][:deployment] == "brisk"
       File.open(filename, 'w') {|f| f.write(briskFile) }
     end
     action :create
-    notifies :run, resources(:execute => "clear-data"), :immediately
   end
 end
 
@@ -521,6 +525,7 @@ ruby_block "buildCassandraEnv" do
     File.open(filename, 'w') {|f| f.write(cassandraEnv) }
   end
   action :create
+  notifies :run, resources(:execute => "clear-data"), :immediately
 end
 
 ruby_block "buildCassandraYaml" do
@@ -550,11 +555,6 @@ ruby_block "buildCassandraYaml" do
     File.open(filename, 'w') {|f| f.write(cassandraYaml) }
   end
   action :create
-
-  execute "sudo mkdir -p #{node[:cassandra][:data_dir]}"
-  execute "sudo mkdir -p #{node[:cassandra][:commitlog_dir]}"
-  execute "sudo chown -R cassandra:cassandra #{node[:cassandra][:data_dir]}"
-  execute "sudo chown -R cassandra:cassandra #{node[:cassandra][:commitlog_dir]}"
 
   # Restart the service
   if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x"
