@@ -14,10 +14,10 @@ insertproportion=0
 
 requestdistribution=zipfian
 
-#This is a consistent target for Cassandra from another machine pointing to a 6-node cluster.
+#This is a consistent target for Cassandra from another machine pointing to a cluster.
 #target=6000
 
-threadcount=30
+threadcount=300
 table=usertable
 columnfamily=data
 

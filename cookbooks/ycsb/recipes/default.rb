@@ -85,10 +85,10 @@ case node[:platform]
     
     # Adds the Cassandra repo:
     # deb http://www.apache.org/dist/cassandra/debian <07x|08x> main
-    if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x":
+    if node[:cassandra][:deployment] == "08x" or node[:cassandra][:deployment] == "07x":
       apt_repository "datastax-repo" do
         uri "http://www.apache.org/dist/cassandra/debian"
-        components [node[:setup][:deployment], "main"]
+        components [node[:cassandra][:deployment], "main"]
         keyserver "pgp.mit.edu"
         key "2B5C1B00"
         action :add
@@ -173,13 +173,13 @@ end
 ###################################################
 
 
-if node[:setup][:deployment] == "07x":
+if node[:cassandra][:deployment] == "07x":
   package "cassandra" do
     notifies :stop, resources(:service => "cassandra"), :immediately
   end
 end
 
-if node[:setup][:deployment] == "08x":
+if node[:cassandra][:deployment] == "08x":
   case node[:platform]
     when "ubuntu", "debian"
       package "cassandra" do
