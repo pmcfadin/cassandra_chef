@@ -520,7 +520,11 @@ ruby_block "buildCassandraYaml" do
     cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/data/,         "#{node[:cassandra][:data_dir]}/cassandra/data")
     cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/commitlog/,    "#{node[:cassandra][:commitlog_dir]}/cassandra/commitlog")
     cassandraYaml = cassandraYaml.gsub(/\/.*\/cassandra\/saved_caches/, "#{node[:cassandra][:data_dir]}/cassandra/saved_caches")
-    cassandraYaml = cassandraYaml.gsub(/seeds:.*/,                      "seeds: \"#{seeds.join(",")}\"")
+    if node[:setup][:deployment] == "07x"
+      cassandraYaml = cassandraYaml.gsub(/- 127.0.0.1/,                 "- #{seeds[0]}")
+    else
+      cassandraYaml = cassandraYaml.gsub(/seeds:.*/,                    "seeds: \"#{seeds.join(",")}\"")
+    end
     cassandraYaml = cassandraYaml.gsub(/listen_address:.*/,             "listen_address: #{node[:cloud][:private_ips].first}")
     cassandraYaml = cassandraYaml.gsub(/rpc_address:.*/,                "rpc_address: #{node[:cassandra][:rpc_address]}")
     if node[:setup][:deployment] == "brisk":
