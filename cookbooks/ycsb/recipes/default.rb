@@ -276,7 +276,7 @@ end
 ###################################################
 
 # Output the workload and starting ring information to a stats file
-execute "echo 'Testing #{[:cassandra][:tag]} with YCSB:#{[:cassandra][:ycsb_tag]}' > ~/DataStaxWorkload-load.stats"
+execute "echo 'Testing #{node[:cassandra][:tag]} with YCSB:#{node[:cassandra][:ycsb_tag]}' > ~/DataStaxWorkload-load.stats"
 execute "cat ~/YCSB/workloads/DataStaxInsertWorkload >> ~/DataStaxWorkload-load.stats"
 execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
 execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/DataStaxWorkload-load.stats"
