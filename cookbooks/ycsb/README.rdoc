@@ -52,7 +52,7 @@ where <role> is the value declared as default[:setup][:current_role]. Edit the f
       "description": "",
       "chef_type": "role",
       "override_attributes": {
-        "setup": { "deployment": "07", "current_role": "cassandra07" }
+        "setup": { "deployment": "07x", "current_role": "cassandra07" }
       }
     }
 
@@ -69,7 +69,7 @@ where <role> is the value declared as default[:setup][:current_role]. Edit the f
       "description": "",
       "chef_type": "role",
       "override_attributes": {
-        "setup": { "deployment": "08", "current_role": "cassandra08" }
+        "setup": { "deployment": "08x", "current_role": "cassandra08" }
       }
     }
 

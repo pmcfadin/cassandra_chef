@@ -64,9 +64,9 @@ Chef::Log.info "Currently seen nodes: #{cluster_nodes_array.inspect}"
 
 # Configure the Cassandra conf directory location
 confPath = ""
-if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x":
+if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x"
   confPath = "/etc/cassandra/"
-elsif node[:setup][:deployment] == "brisk":
+elsif node[:setup][:deployment] == "brisk"
   confPath = "/etc/brisk/cassandra/"
 end
 
@@ -303,7 +303,7 @@ execute "clear-data" do
 end
 
 # Installs the latest Cassandra 0.7.x
-if node[:setup][:deployment] == "07x":
+if node[:setup][:deployment] == "07x"
   package "cassandra" do
     notifies :stop, resources(:service => "cassandra"), :immediately
     notifies :run, resources(:execute => "clear-data"), :immediately
@@ -311,7 +311,7 @@ if node[:setup][:deployment] == "07x":
 end
 
 # Installs the latest Cassandra 0.8.x
-if node[:setup][:deployment] == "08x":
+if node[:setup][:deployment] == "08x"
   case node[:platform]
     when "ubuntu", "debian"
       package "cassandra" do
@@ -327,7 +327,7 @@ if node[:setup][:deployment] == "08x":
 end
 
 # Installs the latest DataStax' Brisk
-if node[:setup][:deployment] == "brisk":
+if node[:setup][:deployment] == "brisk"
   # Install Brisk
   package "brisk-full" do
     notifies :stop, resources(:service => "brisk"), :immediately
@@ -543,13 +543,18 @@ ruby_block "buildCassandraYaml" do
     end
     
     # Change the endpoint_snitch for easier Brisk clustering
-    if node[:setup][:deployment] == "brisk":
+    if node[:setup][:deployment] == "brisk"
       cassandraYaml = cassandraYaml.gsub(/endpoint_snitch:.*/,          "endpoint_snitch: #{node[:brisk][:endpoint_snitch]}")
     end
     
     File.open(filename, 'w') {|f| f.write(cassandraYaml) }
   end
   action :create
+
+  execute "sudo mkdir -p #{node[:cassandra][:data_dir]}"
+  execute "sudo mkdir -p #{node[:cassandra][:commitlog_dir]}"
+  execute "sudo chown -R cassandra:cassandra #{node[:cassandra][:data_dir]}"
+  execute "sudo chown -R cassandra:cassandra #{node[:cassandra][:commitlog_dir]}"
 
   # Restart the service
   if node[:setup][:deployment] == "08x" or node[:setup][:deployment] == "07x"

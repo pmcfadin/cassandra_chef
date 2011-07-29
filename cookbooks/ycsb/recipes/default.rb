@@ -58,7 +58,7 @@ case node[:platform]
     
     # Adds the Cassandra repo:
     # deb http://www.apache.org/dist/cassandra/debian <07x|08x> main
-    if node[:cassandra][:deployment] == "08x" or node[:cassandra][:deployment] == "07x":
+    if node[:cassandra][:deployment] == "08x" or node[:cassandra][:deployment] == "07x"
       apt_repository "datastax-repo" do
         uri "http://www.apache.org/dist/cassandra/debian"
         components [node[:cassandra][:deployment], "main"]
@@ -152,13 +152,13 @@ end
 ###################################################
 
 
-if node[:cassandra][:deployment] == "07x":
+if node[:cassandra][:deployment] == "07x"
   package "cassandra" do
     notifies :stop, resources(:service => "cassandra"), :immediately
   end
 end
 
-if node[:cassandra][:deployment] == "08x":
+if node[:cassandra][:deployment] == "08x"
   case node[:platform]
     when "ubuntu", "debian"
       package "cassandra" do
@@ -203,20 +203,40 @@ execute "buildYCSBModule" do
   cwd "#{node[:setup][:home]}/YCSB"
 end
 
-# Setup Cassandra testing keyspace
-script "setupCassandraTestingCF" do
-  interpreter "bash"
-  user "root"
-  cwd "#{node[:setup][:home]}"
-  code <<-EOH
-  cassandra-cli -h #{cluster_nodes[0][:cloud][:private_ips].first} <<EOF
-  create keyspace usertable 
-    with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
-    and strategy_options = [{replication_factor:3}];
-  use usertable;
-  create column family data;
-EOF
-  EOH
+if node[:cassandra][:deployment] == "07x"
+  # Setup Cassandra testing keyspace
+  script "setupCassandraTestingCF" do
+    interpreter "bash"
+    user "root"
+    cwd "#{node[:setup][:home]}"
+    code <<-EOH
+    cassandra-cli -h #{cluster_nodes[0][:cloud][:private_ips].first} <<EOF
+    create keyspace usertable 
+      with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
+      and replication_factor= 3; 
+    use usertable;
+    create column family data;
+  EOF
+    EOH
+  end
+end
+
+if node[:cassandra][:deployment] == "08x"
+  # Setup Cassandra testing keyspace
+  script "setupCassandraTestingCF" do
+    interpreter "bash"
+    user "root"
+    cwd "#{node[:setup][:home]}"
+    code <<-EOH
+    cassandra-cli -h #{cluster_nodes[0][:cloud][:private_ips].first} <<EOF
+    create keyspace usertable 
+      with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
+      and strategy_options = [{replication_factor:3}];
+    use usertable;
+    create column family data;
+  EOF
+    EOH
+  end
 end
 
 # Allow the keyspace to propagate to the rest of the cluster
@@ -256,7 +276,8 @@ end
 ###################################################
 
 # Output the workload and starting ring information to a stats file
-execute "cat ~/YCSB/workloads/DataStaxInsertWorkload > ~/DataStaxWorkload-load.stats"
+execute "echo 'Testing #{[:cassandra][:tag]} with YCSB:#{[:cassandra][:ycsb_tag]}' > ~/DataStaxWorkload-load.stats"
+execute "cat ~/YCSB/workloads/DataStaxInsertWorkload >> ~/DataStaxWorkload-load.stats"
 execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
 execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/DataStaxWorkload-load.stats"
 execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
@@ -285,7 +306,8 @@ execute "grep AverageLatency #{node[:setup][:home]}/DataStaxWorkload-load.stats 
 
 workloads.each do |workload|
   # Output the workload and starting ring information to a stats file
-  execute "cat ~/YCSB/workloads/#{workload} > ~/#{workload}-test.stats"
+  execute "echo 'Testing #{[:cassandra][:tag]} with YCSB:#{[:cassandra][:ycsb_tag]}:#{workload}' > ~/#{workload}-test.stats"
+  execute "cat ~/YCSB/workloads/#{workload} >> ~/#{workload}-test.stats"
   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
   execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/#{workload}-test.stats"
   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
