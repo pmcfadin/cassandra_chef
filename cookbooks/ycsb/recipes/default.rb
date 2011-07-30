@@ -319,8 +319,6 @@ workloads.each do |workload|
   end
 
   # Output the ring information to a stats file
-  execute "echo '====================================\n' >> ~/#{workload}-load.stats"
-  execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/#{workload}-load.stats"
   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
   execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/#{workload}-test.stats"
 
