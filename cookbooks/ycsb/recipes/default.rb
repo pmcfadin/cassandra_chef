@@ -38,6 +38,8 @@ for i in (0..cluster_nodes.count-1)
 end
 Chef::Log.info "Currently seen nodes: #{nodeIPcsv}"
 
+firstNode = cluster_nodes[0][:cloud][:private_ips].first
+
 
 ###################################################
 # 
@@ -210,7 +212,7 @@ if node[:cassandra][:deployment] == "07x"
     user "root"
     cwd "#{node[:setup][:home]}"
     code <<-EOH
-    cassandra-cli -h #{cluster_nodes[0][:cloud][:private_ips].first} <<EOF
+    cassandra-cli -h #{firstNode} <<EOF
     create keyspace usertable 
       with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
       and replication_factor= 3; 
@@ -228,7 +230,7 @@ if node[:cassandra][:deployment] == "08x"
     user "root"
     cwd "#{node[:setup][:home]}"
     code <<-EOH
-    cassandra-cli -h #{cluster_nodes[0][:cloud][:private_ips].first} <<EOF
+    cassandra-cli -h #{firstNode} <<EOF
     create keyspace usertable 
       with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
       and strategy_options = [{replication_factor:3}];
@@ -279,7 +281,7 @@ end
 execute "echo 'Testing #{node[:cassandra][:tag]} with YCSB:#{node[:cassandra][:ycsb_tag]}' > ~/DataStaxWorkload-load.stats"
 execute "cat ~/YCSB/workloads/DataStaxInsertWorkload >> ~/DataStaxWorkload-load.stats"
 execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
-execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/DataStaxWorkload-load.stats"
+execute "nodetool -h #{firstNode} ring >> ~/DataStaxWorkload-load.stats"
 execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
 
 # Run the preload
@@ -290,7 +292,7 @@ end
 
 # Output the ring information to a stats file
 execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
-execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/DataStaxWorkload-load.stats"
+execute "nodetool -h #{firstNode} ring >> ~/DataStaxWorkload-load.stats"
 
 # Print results
 execute "echo 'RESULTS FOR: DataStaxWorkload-load.stats' | tee ~/DataStaxWorkload-load-results.stats"
@@ -309,7 +311,7 @@ workloads.each do |workload|
   execute "echo 'Testing #{node[:cassandra][:tag]} with YCSB:#{node[:cassandra][:ycsb_tag]}:#{workload}' > ~/#{workload}-test.stats"
   execute "cat ~/YCSB/workloads/#{workload} >> ~/#{workload}-test.stats"
   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
-  execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/#{workload}-test.stats"
+  execute "nodetool -h #{firstNode} ring >> ~/#{workload}-test.stats"
   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
 
   # Run the preload
@@ -320,7 +322,7 @@ workloads.each do |workload|
 
   # Output the ring information to a stats file
   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
-  execute "nodetool -h #{cluster_nodes[0][:cloud][:private_ips].first} ring >> ~/#{workload}-test.stats"
+  execute "nodetool -h #{firstNode} ring >> ~/#{workload}-test.stats"
 
   # Print results
   execute "echo 'RESULTS FOR: #{workload}-test.stats' | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
