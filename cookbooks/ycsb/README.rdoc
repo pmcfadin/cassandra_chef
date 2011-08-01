@@ -40,6 +40,23 @@ where <role> is the value declared as default[:setup][:current_role]. Edit the f
     }
 
     {
+      "name": "ycsb07",
+      "default_attributes": {
+      },
+      "json_class": "Chef::Role",
+      "env_run_lists": {
+      },
+      "run_list": [
+        "recipe[ycsb]"
+      ],
+      "description": "",
+      "chef_type": "role",
+      "override_attributes": {
+        "cassandra": { "current_role": "cassandra07", "deployment": "07x", "tag": "cassandra-0.7.8", "ycsb_tag": "cassandra-0.7", "ycsb_package": "CassandraClient7" }
+      }
+    }
+
+    {
       "name": "cassandra07",
       "default_attributes": {
       },
