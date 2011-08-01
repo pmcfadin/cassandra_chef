@@ -277,67 +277,85 @@ end
 # 
 ###################################################
 
-# Output the workload and starting ring information to a stats file
-execute "echo 'Testing #{node[:cassandra][:tag]} with YCSB:#{node[:cassandra][:ycsb_tag]}' > ~/DataStaxWorkload-load.stats"
-execute "cat ~/YCSB/workloads/DataStaxInsertWorkload >> ~/DataStaxWorkload-load.stats"
-execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
-execute "nodetool -h #{firstNode} ring >> ~/DataStaxWorkload-load.stats"
-execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
+# # Output the workload and starting ring information to a stats file
+# execute "echo 'Testing #{node[:cassandra][:tag]} with YCSB:#{node[:cassandra][:ycsb_tag]}' > ~/DataStaxWorkload-load.stats"
+# execute "cat ~/YCSB/workloads/DataStaxInsertWorkload >> ~/DataStaxWorkload-load.stats"
+# execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
+# execute "nodetool -h #{firstNode} ring >> ~/DataStaxWorkload-load.stats"
+# execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
 
-# Run the preload
-execute "runYCSBLoader" do
-  command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/DataStaxInsertWorkload -s -load >> ~/DataStaxWorkload-load.stats 2>&1"
-  cwd "#{node[:setup][:home]}/YCSB"
+# # Run the preload
+# execute "runYCSBLoader" do
+#   command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/DataStaxInsertWorkload -s -load >> ~/DataStaxWorkload-load.stats 2>&1"
+#   cwd "#{node[:setup][:home]}/YCSB"
+# end
+
+# # Output the ring information to a stats file
+# execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
+# execute "nodetool -h #{firstNode} ring >> ~/DataStaxWorkload-load.stats"
+
+# # Print results
+# execute "echo 'RESULTS FOR: DataStaxWorkload-load.stats' | tee ~/DataStaxWorkload-load-results.stats"
+# execute "grep RunTime #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
+# execute "grep Throughput #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
+# execute "grep AverageLatency #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
+
+# ###################################################
+# # 
+# # Run tests
+# # 
+# ###################################################
+
+# workloads.each do |workload|
+#   # Output the workload and starting ring information to a stats file
+#   execute "echo 'Testing #{node[:cassandra][:tag]} with YCSB:#{node[:cassandra][:ycsb_tag]}:#{workload}' > ~/#{workload}-test.stats"
+#   execute "cat ~/YCSB/workloads/#{workload} >> ~/#{workload}-test.stats"
+#   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
+#   execute "nodetool -h #{firstNode} ring >> ~/#{workload}-test.stats"
+#   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
+
+#   # Run the preload
+#   execute "runYCSBTest" do
+#     command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{workload} -s -t    >> ~/#{workload}-test.stats 2>&1"
+#     cwd "#{node[:setup][:home]}/YCSB"
+#   end
+
+#   # Output the ring information to a stats file
+#   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
+#   execute "nodetool -h #{firstNode} ring >> ~/#{workload}-test.stats"
+
+#   # Print results
+#   execute "echo 'RESULTS FOR: #{workload}-test.stats' | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
+#   execute "grep RunTime #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
+#   execute "grep Throughput #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
+#   execute "grep AverageLatency #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats"
+# end
+
+cookbook_file "#{node[:setup][:home]}/ycsb_kicker.sh" do
+  source "ycsb_kicker.sh"
+  mode "0755"
 end
 
-# Output the ring information to a stats file
-execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
-execute "nodetool -h #{firstNode} ring >> ~/DataStaxWorkload-load.stats"
-
-# Print results
-execute "echo 'RESULTS FOR: DataStaxWorkload-load.stats' | tee ~/DataStaxWorkload-load-results.stats"
-execute "grep RunTime #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
-execute "grep Throughput #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
-execute "grep AverageLatency #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
-
-###################################################
-# 
-# Run tests
-# 
-###################################################
-
-workloads.each do |workload|
-  # Output the workload and starting ring information to a stats file
-  execute "echo 'Testing #{node[:cassandra][:tag]} with YCSB:#{node[:cassandra][:ycsb_tag]}:#{workload}' > ~/#{workload}-test.stats"
-  execute "cat ~/YCSB/workloads/#{workload} >> ~/#{workload}-test.stats"
-  execute "echo '====================================\n' >> ~/#{workload}-test.stats"
-  execute "nodetool -h #{firstNode} ring >> ~/#{workload}-test.stats"
-  execute "echo '====================================\n' >> ~/#{workload}-test.stats"
-
-  # Run the preload
-  execute "runYCSBTest" do
-    command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{workload} -s -t    >> ~/#{workload}-test.stats 2>&1"
-    cwd "#{node[:setup][:home]}/YCSB"
-  end
-
-  # Output the ring information to a stats file
-  execute "echo '====================================\n' >> ~/#{workload}-test.stats"
-  execute "nodetool -h #{firstNode} ring >> ~/#{workload}-test.stats"
-
-  # Print results
-  execute "echo 'RESULTS FOR: #{workload}-test.stats' | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
-  execute "grep RunTime #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
-  execute "grep Throughput #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
-  execute "grep AverageLatency #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats"
+template "#{node[:setup][:home]}/ycsb_tester.sh" do
+  source "ycsb_tester.erb"
+  mode "0755"
+  variables({
+    :workload_list => workloads.join(" "),
+    :first_node => firstNode
+  })
 end
 
+execute "~/ycsb_kicker.sh"
+
+Chef::Log.info "Tests have started running via 'screen'."
+
 ###################################################
 # 
 # Print results
 # 
 ###################################################
 
-execute "cat ~/DataStaxWorkload-test-results.stats"
+# execute "cat ~/DataStaxWorkload-test-results.stats"
 
 ###################################################
 # 
@@ -346,3 +364,12 @@ execute "cat ~/DataStaxWorkload-test-results.stats"
 ###################################################
 
 execute "chown -R ubuntu:ubuntu ~/"
+
+###################################################
+# 
+# Remove the MOTD
+# 
+###################################################
+
+execute "rm -rf /etc/motd"
+execute "touch /etc/motd"
