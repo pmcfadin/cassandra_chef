@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Output the workload and starting ring information to a stats file
 cd <%= node[:setup][:home] %>
@@ -41,7 +41,7 @@ do
   echo "====================================\n" >> ~/$workload-test.stats
 
   # Run the preload
-  cd <%= node[:setup][:home] %>
+  cd <%= node[:setup][:home] %>/YCSB
   java -cp build/ycsb.jar:db/<%= node[:cassandra][:ycsb_tag] %>/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.<%= node[:cassandra][:ycsb_package] %> -P workloads/$workload -s -t    >> ~/$workload-test.stats 2>&1
   cd <%= node[:setup][:home] %>
 
