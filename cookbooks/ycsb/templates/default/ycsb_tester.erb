@@ -5,9 +5,9 @@ cd <%= node[:setup][:home] %>
 
 echo "Testing <%= node[:cassandra][:tag] %> with YCSB:<%= node[:cassandra][:ycsb_tag] %>" > ~/DataStaxWorkload-load.stats
 cat ~/YCSB/workloads/DataStaxInsertWorkload >> ~/DataStaxWorkload-load.stats
-echo "====================================\n" >> ~/DataStaxWorkload-load.stats
+echo "====================================" >> ~/DataStaxWorkload-load.stats
 nodetool -h <%= @first_node %> ring >> ~/DataStaxWorkload-load.stats
-echo "====================================\n" >> ~/DataStaxWorkload-load.stats
+echo "====================================" >> ~/DataStaxWorkload-load.stats
 
 # Run the preload
 cd <%= node[:setup][:home] %>/YCSB
@@ -15,7 +15,7 @@ java -cp build/ycsb.jar:db/<%= node[:cassandra][:ycsb_tag] %>/lib/* com.yahoo.yc
 cd <%= node[:setup][:home] %>
 
 # Output the ring information to a stats file
-echo "====================================\n" >> ~/DataStaxWorkload-load.stats
+echo "====================================" >> ~/DataStaxWorkload-load.stats
 nodetool -h <%= @first_node %> ring >> ~/DataStaxWorkload-load.stats
 
 # Print results
@@ -36,9 +36,9 @@ do
   # Output the workload and starting ring information to a stats file
   echo "Testing <%= node[:cassandra][:tag] %> with YCSB:<%= node[:cassandra][:ycsb_tag] %>:$workload" > ~/$workload-test.stats
   cat ~/YCSB/workloads/$workload >> ~/$workload-test.stats
-  echo "====================================\n" >> ~/$workload-test.stats
+  echo "====================================" >> ~/$workload-test.stats
   nodetool -h <%= @first_node %> ring >> ~/$workload-test.stats
-  echo "====================================\n" >> ~/$workload-test.stats
+  echo "====================================" >> ~/$workload-test.stats
 
   # Run the preload
   cd <%= node[:setup][:home] %>/YCSB
@@ -46,7 +46,7 @@ do
   cd <%= node[:setup][:home] %>
 
   # Output the ring information to a stats file
-  echo "====================================\n" >> ~/$workload-test.stats
+  echo "====================================" >> ~/$workload-test.stats
   nodetool -h <%= @first_node %> ring >> ~/$workload-test.stats
 
   # Print results

@@ -4,11 +4,11 @@
 
 import sys
 
-if len(sys.argv) > 2:
+if len(sys.argv) > 1:
   filename = sys.argv[1]
-  outfile = sys.argv[2]
 else:
-  print "Usage: generateChart.py <input-filename> <output-filename>"
+  print "Usage: generateChart.py <input-filename>"
+  print "Produces: <input-filename>.html"
   print
   sys.exit()
 
@@ -29,14 +29,17 @@ with open(filename, 'r') as f:
     for line in read_data:
         if "sec" in line and "operations" in line and "current ops/sec" in line:
             line = line.strip().split()
-            dataType = line[7].strip('[')
-            dataTime = line[0]
-            dataOps = str(int(line[2]))
-            dataOpsSec = line[4]
-            dataLatency = line[8].strip("]").split("=")[1]
-            # dataString += "        ['" + dataType + "', " + dataTime + ", " + dataOps + ", " + dataOpsSec + ", " + dataLatency + "],\n"
-            opsData += "        [" + dataTime + ", " + dataOpsSec + "],\n"
-            latencyData += "        [" + dataTime + ", " + dataLatency + "],\n"
+            try:
+              dataType = line[7].strip('[')
+              dataTime = line[0]
+              dataOps = str(int(line[2]))
+              dataOpsSec = line[4]
+              dataLatency = line[8].strip("]").split("=")[1]
+              # dataString += "        ['" + dataType + "', " + dataTime + ", " + dataOps + ", " + dataOpsSec + ", " + dataLatency + "],\n"
+              opsData += "        [" + dataTime + ", " + dataOpsSec + "],\n"
+              latencyData += "        [" + dataTime + ", " + dataLatency + "],\n"
+            except Exception:
+              pass
 
 html = """
 <html>
@@ -107,5 +110,7 @@ html = """
   </body>
 </html>
 """
-with open(outfile, 'w') as f:
+with open(filename + '.html', 'w') as f:
     f.write(html)
+
+print filename + ".html has been created."

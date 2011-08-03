@@ -147,6 +147,11 @@ execute "ant" do
   cwd "#{node[:setup][:home]}/YCSB"
 end
 
+cookbook_file "#{node[:setup][:home]}/generateChart.py" do
+  source "generateChart.py"
+  mode "0755"
+end
+
 ###################################################
 # 
 # Install Cassandra
