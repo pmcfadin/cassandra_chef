@@ -93,6 +93,8 @@ This means that the role, that you can assign to many machines, will run this re
 
 == Ports Needed
 
+A list of the ports required to be open are as follows:
+
     Public Facing:
         Cassandra:
             9160: Cassandra client port

@@ -11,13 +11,13 @@
       "choice": [
 
       ],
-      "default": "cassandra",
+      "default": "1",
       "type": "string",
       "recipes": [
 
       ],
-      "display_name": "The Cluster's Role",
-      "description": "The role of the cluster which OpsCenter will oversee"
+      "display_name": "Cassandra's Replication Factor",
+      "description": "Set the replication factor you wish to test Cassandra with"
     },
     "ycsb": {
       "required": "optional",
@@ -29,8 +29,8 @@
       "recipes": [
 
       ],
-      "display_name": "Setup Configurations",
-      "description": "Hash of Setup Configurations"
+      "display_name": "YCSB Configurations",
+      "description": "Hash of YCSB Configurations"
     },
     "setup/test": {
       "required": "optional",
@@ -38,13 +38,13 @@
       "choice": [
 
       ],
-      "default": "cassandra",
+      "default": "CassandraClient8",
       "type": "string",
       "recipes": [
 
       ],
-      "display_name": "The Cluster's Role",
-      "description": "The role of the cluster which OpsCenter will oversee"
+      "display_name": "The YCSB test ID",
+      "description": "Choices of CassandraClient8, CassandraClient7. Additional settings can be found in $CHEF_HOME/cookbooks/ycsb/recipes/cassandra.rb"
     },
     "setup/home": {
       "required": "optional",
@@ -52,13 +52,13 @@
       "choice": [
 
       ],
-      "default": "cassandra",
+      "default": "/home/ubuntu",
       "type": "string",
       "recipes": [
 
       ],
-      "display_name": "The Cluster's Role",
-      "description": "The role of the cluster which OpsCenter will oversee"
+      "display_name": "The YCSB home directory",
+      "description": "The YCSB home directory where everything will install to"
     },
     "setup": {
       "required": "optional",
@@ -79,13 +79,13 @@
       "choice": [
 
       ],
-      "default": "cassandra",
+      "default": "[\"DataStaxInsertWorkload\", \"DataStaxReadWorkload\", \"DataStaxScanWorkload\"]",
       "type": "string",
       "recipes": [
 
       ],
-      "display_name": "The Cluster's Role",
-      "description": "The role of the cluster which OpsCenter will oversee"
+      "display_name": "Workloads",
+      "description": "The array of workloads to be run. The first workload is run with a preload followed by the test. All others follow only with their test switch."
     },
     "cassandra": {
       "required": "optional",
@@ -97,8 +97,8 @@
       "recipes": [
 
       ],
-      "display_name": "Setup Configurations",
-      "description": "Hash of Setup Configurations"
+      "display_name": "Cassandra Configurations",
+      "description": "Hash of Cassandra Configurations"
     }
   },
   "license": "Apache License",

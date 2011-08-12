@@ -177,3 +177,6 @@ include_recipe node[:setup][:ycsb_recipe]
 execute "rm -rf /etc/motd"
 execute "touch /etc/motd"
 execute "chown -R ubuntu:ubuntu ~/"
+
+Chef::Log.info "The tests are currently running on the machine."
+Chef::Log.info "The stats files will be located at #{node[:setup][:home]}/DataStax*.stats."
