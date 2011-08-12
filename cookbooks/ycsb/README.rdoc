@@ -1,10 +1,10 @@
 = DESCRIPTION:
 
-This script launches a DataStax' Brisk cluster of a predetermined size. It also includes OpsCenter installation and Configuration support.
+This script launches a YCSB machine for testing Cassandra 0.8 and 0.7. It has been modularized for additional tests.
 
 This has been tested in Ubuntu 10.10 and CentOS 5.5, but should support your version of Ubuntu, CentOS, and RedHat.
 
-This script will be developed and housed at: https://github.com/riptano/chef. On every Brisk release, however, expect https://github.com/riptano/brisk to contain the newest version.
+This script will be developed and housed at: https://github.com/riptano/chef.
 
 = REQUIREMENTS:
 
@@ -41,6 +41,8 @@ where <role> is the value declared as default[:setup][:current_role]. Edit the f
         }
       }
     }
+
+or
 
     {
       "name": "ycsb07",
@@ -106,12 +108,11 @@ For a RedHat 5 Machine (Untested):
 
     wget http://goo.gl/0k8mV -O- > ~/.chef/bootstrap/rhel5-rbel.erb
     knife bootstrap --sudo -x root -d rhel5-rbel <publicDNS>
-    knife bootstrap -r recipe['brisk'] --sudo -x root -d rhel5-rbel <publicDNS>
+    knife bootstrap -r recipe['ycsb'] --sudo -x root -d rhel5-rbel <publicDNS>
 
 
 == Other Useful Debugging Commands
 
-This commands shows the json for a chosen machine that is accessible through the Chef script:
-
     knife node show YCSB --format json
+    knife cookbook metadata ycsb -o cookbooks
 

@@ -152,8 +152,6 @@ For a RedHat 5 Machine (Untested):
 
 == Other Useful Debugging Commands
 
-This commands shows the json for a chosen machine that is accessible through the Chef script:
-
     knife node show Server01 --format json
     knife cookbook metadata cassandra -o cookbooks
     
