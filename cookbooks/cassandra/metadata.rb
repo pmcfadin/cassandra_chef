@@ -1,23 +1,30 @@
 maintainer       "DataStax"
 maintainer_email "joaquin@datastax.com"
 license          "Apache License"
-description      "Install and configure Brisk in a multi-node environment"
+description      "Install and configure Cassandra in a multi-node environment"
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.rdoc'))
 version          "0.1.4"
 depends          "apt"
-depends          "cassandra"
-recipe           "brisk::default", "Runs the full list of scripts needed."
-recipe           "brisk::install", "Installs the actual DataStax' Brisk package."
-recipe           "brisk::additional_settings", "Additional settings for optimal performance for the cluster."
-recipe           "brisk::token_generation", "Generates the token positions for the cluster."
-recipe           "brisk::create_seed_list", "Generates the seed lists for the cluster."
-recipe           "brisk::write_configs", "Writes the configurations for Brisk."
-recipe           "brisk::restart_service", "Restarts the Brisk service."
+recipe           "cassandra::default", "Runs the full list of scripts needed."
+recipe           "cassandra::setup_repos", "Sets up the Apache Cassandra and DataStax Repos."
+recipe           "cassandra::required_packages", "Installs required packages, primarily sun-java-sdk."
+recipe           "cassandra::optional_packages", "Installs extra tools for Cassandra maintenance."
+recipe           "cassandra::install", "Installs the actual Cassandra package."
+recipe           "cassandra::additional_settings", "Additional settings for optimal performance for the cluster."
+recipe           "cassandra::token_generation", "Generates the token positions for the cluster."
+recipe           "cassandra::create_seed_list", "Generates the seed lists for the cluster."
+recipe           "cassandra::write_configs", "Writes the configurations for Cassandra."
+recipe           "cassandra::restart_service", "Restarts the Cassandra service."
 
 attribute "setup",
   :display_name => "Setup Configurations",
   :description => "Hash of Setup Configurations",
   :type => "hash"
+
+attribute "setup/deployment",
+  :display_name => "Deployment Version",
+  :description => "The deployment version for Cassandra. Choices are '07x', or '08x'",
+  :default => "08x"
 
 attribute "setup/cluster_size",
   :display_name => "Cluster Size",
@@ -27,7 +34,7 @@ attribute "setup/cluster_size",
 attribute "setup/current_role",
   :display_name => "Current Role Being Assigned",
   :description => "The role that the cluster is being assigned",
-  :default => "brisk"
+  :default => "cassandra"
 
 
 
@@ -71,26 +78,20 @@ attribute "cassandra/rpc_address",
   :display_name => "Cassandra RPC Address",                                                                                                                                                                        
   :description => "The address to bind the Thrift RPC service to",
   :default => "0.0.0.0"
-  
+
 attribute "cassandra/confPath",
   :display_name => "Cassandra Settings Path",                                                                                                                                                                        
   :description => "The path for cassandra.yaml and cassandra-env.sh",
-  :default => "/etc/brisk/cassandra/"
+  :default => "/etc/cassandra/"
 
 
 
-
-attribute "brisk",
-  :display_name => "Brisk",
-  :description => "Hash of Brisk attributes",
+attribute "internal",
+  :display_name => "Internal Hash",
+  :description => "Hash of Internal attributes",
   :type => "hash"
 
-attribute "setup/vanilla_nodes",
-  :display_name => "Number of Vanilla Nodes",
-  :description => "Number of nodes that will start up vanilla Cassandra",
-  :default => "2"
-
-attribute "brisk/endpoint_snitch",
-  :display_name => "Brisk Endpoint Snitch",                                                                                                                                                                        
-  :description => "How Cassandra knows your network topology to route requests efficiently",
-  :default => "org.apache.cassandra.locator.BriskSimpleSnitch"
+attribute "internal/prime",
+  :display_name => "Internal Hash Primer",
+  :description => "Primes a datastore for internal use only",
+  :default => "true"

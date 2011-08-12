@@ -1,0 +1,144 @@
+= DESCRIPTION:
+
+This script launches a DataStax' OpsCenter machine to overlook a cluster.
+
+This has been tested in Ubuntu 10.10 and CentOS 5.5, but should support your version of Ubuntu, CentOS, and RedHat.
+
+This script will be developed and housed at: https://github.com/riptano/chef.
+
+= REQUIREMENTS:
+
+Follow the instructions as listed here: http://wiki.opscode.com/display/chef/Quick+Start.
+
+== Configure cloud access
+
+Proceed to configure your cloud access by adding these following lines to your ~/.chef/knife.rb file.
+
+    # Information can be found at: https://manage.rackspacecloud.com/APIAccess.do
+    knife[:rackspace_api_username] = "USER"
+    knife[:rackspace_api_key]      = "KEY"
+
+    # Information can be found at: https://aws-portal.amazon.com/gp/aws/developer/account?ie=UTF8&action=access-key
+    knife[:aws_access_key_id]     = "ID"
+    knife[:aws_secret_access_key] = "KEY"
+
+Place this directory into your cookbooks folder.
+
+Download and place the cassandra and apt cookbooks in your cookbooks folder. 
+The cassandra cookbook can be found here: https://github.com/riptano/chef.
+The apt recipe can be found here: http://community.opscode.com/cookbooks/apt
+
+Then run:
+
+    knife cookbook upload -a -o cookbooks/
+
+You should see something similar to:
+
+    Uploading apt                     [1.1.2]
+    Uploading cassandra               [0.1.4]
+    Uploading chef-client             [0.99.5]
+    Uploading opscenter               [0.1.4]
+    upload complete
+
+= ATTRIBUTES:
+
+The main attributes to look at can be found at $CHEF_HOME/cookbooks/opscenter/attributes/default.rb and are:
+
+    # Needed for the Chef script to function properly
+    default[:setup][:cluster_role] = "cassandra"
+
+    # OpsCenter settings
+    default[:opscenter][:user] = false
+    default[:opscenter][:pass] = false
+    default[:opscenter][:production_use] = false
+
+For more information, look over $CHEF_HOME/cookbooks/opscenter/metadata.rb.
+
+To obtain a free OpsCenter license, please visit: http://www.datastax.com/opscenter.
+
+After properly configuring the attributes, upload the cookbook files again by running:
+
+    knife cookbook upload -a -o cookbooks/
+
+= USAGE:
+
+== Configure roles
+
+Run this line from your default chef folder:
+
+    knife role create opscenter
+
+Edit the file to look very similar to this:
+
+    {
+      "name": "opscenter",
+      "default_attributes": {
+      },
+      "json_class": "Chef::Role",
+      "env_run_lists": {
+      },
+      "run_list": [
+        "recipe[opscenter]"  # This is the line of importance
+      ],
+      "description": "",
+      "chef_type": "role",
+      "override_attributes": {
+      }
+    }
+
+This means that the role, that you can assign to many machines, will run this recipe upon assignment.
+
+== Starting up a cluster
+
+An Ubuntu 10.10 OpsCenter machine in Rackspace:
+
+    knife rackspace server create -r "role[opscenter]" -i 69 -f 6 -S Server01 -N OpsCenter
+
+An Ubuntu 10.10 OpsCenter machine in EC2:
+
+    pemname=<pemFileName>  # do not include ".pem"
+    group=<securityGroupName>
+    knife ec2 server create -r "role[opscenter]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N OpsCenter
+
+NOTE: These AMIs only work in the US-East region. For all other regions, see http://cloud.ubuntu.com/ami/.
+
+A Debian 6.0 (Squeeze) OpsCenter machine in Rackspace:
+
+    knife rackspace server create -r "role[opscenter]" -i 75 -f 6 -S Server01 -N OpsCenter
+
+A CentOS 5.5 OpsCenter machine in Rackspace:
+
+    knife rackspace server create -r "role[opscenter]" -i 51 -f 6 -d centos5-gems -S Server01 -N OpsCenter
+
+NOTE: Also, these lines should be run consecutively and never in parallel with the creation of your cluster.
+
+== Bootstrapping Commands
+
+In order to run bootstrapping commands, you must be able to complete a passwordless SSH login. Typically, by copying your ~/.ssh/id_rsa.pub key into the target machine's ~/.ssh/authorized_keys file, passwordless SSH should work. Search google for more information.
+
+For an Ubuntu/Debian Machine:
+
+    knife bootstrap -r recipe['opscenter'] --sudo -x root <publicDNS>
+
+For an Ubuntu Machine on EC2:
+
+    knife bootstrap -r recipe['opscenter'] --sudo -x ubuntu <publicDNS>
+
+For a CentOS 5 Machine:
+
+    knife bootstrap -r "recipe['opscenter']" --sudo -x root -d centos5-gems <publicDNS>
+
+For a RedHat 5 Machine (Untested):
+
+    wget http://goo.gl/0k8mV -O- > ~/.chef/bootstrap/rhel5-rbel.erb
+    knife bootstrap --sudo -x root -d rhel5-rbel <publicDNS>
+    knife bootstrap -r recipe['opscenter'] --sudo -x root -d rhel5-rbel <publicDNS>
+
+
+== Other Useful Debugging Commands
+
+This commands shows the json for a chosen machine that is accessible through the Chef script:
+
+    knife node show Server01 --format json
+    knife cookbook metadata opscenter -o cookbooks
+    

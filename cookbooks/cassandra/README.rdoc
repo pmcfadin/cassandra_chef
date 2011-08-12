@@ -1,6 +1,6 @@
 = DESCRIPTION:
 
-This script launches a DataStax' Brisk cluster of a predetermined size.
+This script launches a Apache Cassandra cluster of a predetermined size.
 
 This has been tested in Ubuntu 10.10 and CentOS 5.5, but should support your version of Ubuntu, CentOS, and RedHat.
 
@@ -24,8 +24,7 @@ Proceed to configure your cloud access by adding these following lines to your ~
 
 Place this directory into your cookbooks folder.
 
-Download and place the cassandra and apt cookbooks in your cookbooks folder. 
-The cassandra cookbook can be found here: https://github.com/riptano/chef.
+Download and place the apt cookbook in your cookbooks folder. 
 The apt recipe can be found here: http://community.opscode.com/cookbooks/apt
 
 Then run:
@@ -35,32 +34,28 @@ Then run:
 You should see something similar to:
 
     Uploading apt                     [1.1.2]
-    Uploading brisk                   [0.1.4]
     Uploading cassandra               [0.1.4]
     Uploading chef-client             [0.99.5]
     upload complete
 
 = ATTRIBUTES:
 
-The main attributes to look can be found at $CHEF_HOME/cookbooks/brisk/attributes/default.rb and are:
+The main attributes to look can be found at $CHEF_HOME/cookbooks/cassandra/attributes/default.rb and are:
 
     # Needed for the Chef script to function properly
-    normal[:setup][:deployment] = "brisk"
-    normal[:setup][:cluster_size] = 4
-    normal[:setup][:current_role] = "brisk"
+    default[:setup][:deployment] = "08x"    # Choices are "07x", or "08x"
+    default[:setup][:cluster_size] = 4
+    default[:setup][:current_role] = "cassandra"
 
     # A unique name is preferred to stop the risk of different clusters joining each other
-    normal[:cassandra][:cluster_name] = "Brisk Cluster"
+    default[:cassandra][:cluster_name] = "Cassandra Cluster"
 
     # It is best to have the commit log and the data
     # directory on two seperate drives
-    normal[:cassandra][:commitlog_dir] = "/var/lib"
-    normal[:cassandra][:data_dir] = "/var/lib"
+    default[:cassandra][:commitlog_dir] = "/var/lib"
+    default[:cassandra][:data_dir] = "/var/lib"
 
-    # The number of non-task trackers you wish to run
-    default[:brisk][:vanilla_nodes] = 2
-
-For more information, look over $CHEF_HOME/cookbooks/brisk/metadata.rb.
+For more information, look over $CHEF_HOME/cookbooks/cassandra/metadata.rb.
 
 To obtain a free OpsCenter license, please visit: http://www.datastax.com/opscenter.
 
@@ -74,19 +69,19 @@ After properly configuring the attributes, upload the cookbook files again by ru
 
 Run this line from your default chef folder:
 
-    knife role create brisk
+    knife role create cassandra
 
-where "brisk" is the value declared as default[:setup][:current_role]. Edit the file to look very similar to this:
+where "cassandra" is the value declared as default[:setup][:current_role]. Edit the file to look very similar to this:
 
     {
-      "name": "brisk",
+      "name": "cassandra",
       "default_attributes": {
       },
       "json_class": "Chef::Role",
       "env_run_lists": {
       },
       "run_list": [
-        "recipe[brisk]"  # This is the line of importance
+        "recipe[cassandra]"  # This is the line of importance
       ],
       "description": "",
       "chef_type": "role",
@@ -100,35 +95,35 @@ This means that the role, that you can assign to many machines, will run this re
 
 An Ubuntu 10.10 cloud in Rackspace:
 
-    knife rackspace server create -r "role[brisk]" -i 69 -f 6 -S Server01 -N Server01
-    knife rackspace server create -r "role[brisk]" -i 69 -f 6 -S Server02 -N Server02
-    knife rackspace server create -r "role[brisk]" -i 69 -f 6 -S Server03 -N Server03
-    knife rackspace server create -r "role[brisk]" -i 69 -f 6 -S Server04 -N Server04
+    knife rackspace server create -r "role[cassandra]" -i 69 -f 6 -S Server01 -N Server01
+    knife rackspace server create -r "role[cassandra]" -i 69 -f 6 -S Server02 -N Server02
+    knife rackspace server create -r "role[cassandra]" -i 69 -f 6 -S Server03 -N Server03
+    knife rackspace server create -r "role[cassandra]" -i 69 -f 6 -S Server04 -N Server04
 
 An Ubuntu 10.10 cloud in EC2:
 
     pemname=<pemFileName>  # do not include ".pem"
     group=<securityGroupName>
-    knife ec2 server create -r "role[brisk]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server01
-    knife ec2 server create -r "role[brisk]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server02
-    knife ec2 server create -r "role[brisk]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server03
-    knife ec2 server create -r "role[brisk]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server04
+    knife ec2 server create -r "role[cassandra]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server01
+    knife ec2 server create -r "role[cassandra]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server02
+    knife ec2 server create -r "role[cassandra]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server03
+    knife ec2 server create -r "role[cassandra]" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server04
 
 NOTE: These AMIs only work in the US-East region. For all other regions, see http://cloud.ubuntu.com/ami/.
 
 A Debian 6.0 (Squeeze) cloud in Rackspace:
 
-    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server01 -N Server01
-    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server02 -N Server02
-    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server03 -N Server03
-    knife rackspace server create -r "role[brisk]" -i 75 -f 6 -S Server04 -N Server04
+    knife rackspace server create -r "role[cassandra]" -i 75 -f 6 -S Server01 -N Server01
+    knife rackspace server create -r "role[cassandra]" -i 75 -f 6 -S Server02 -N Server02
+    knife rackspace server create -r "role[cassandra]" -i 75 -f 6 -S Server03 -N Server03
+    knife rackspace server create -r "role[cassandra]" -i 75 -f 6 -S Server04 -N Server04
 
 A CentOS 5.5 cloud in Rackspace:
 
-    knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server01 -N Server01
-    knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server02 -N Server02
-    knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server03 -N Server03
-    knife rackspace server create -r "role[brisk]" -i 51 -f 6 -d centos5-gems -S Server04 -N Server04
+    knife rackspace server create -r "role[cassandra]" -i 51 -f 6 -d centos5-gems -S Server01 -N Server01
+    knife rackspace server create -r "role[cassandra]" -i 51 -f 6 -d centos5-gems -S Server02 -N Server02
+    knife rackspace server create -r "role[cassandra]" -i 51 -f 6 -d centos5-gems -S Server03 -N Server03
+    knife rackspace server create -r "role[cassandra]" -i 51 -f 6 -d centos5-gems -S Server04 -N Server04
 
 NOTE: You can run these lines more times as long as the attributes are set properly. Also, these lines should be run consecutively and never in parallel.
 
@@ -138,21 +133,21 @@ In order to run bootstrapping commands, you must be able to complete a passwordl
 
 For an Ubuntu/Debian Machine:
 
-    knife bootstrap -r recipe['brisk'] --sudo -x root <publicDNS>
+    knife bootstrap -r recipe['cassandra'] --sudo -x root <publicDNS>
 
 For an Ubuntu Machine on EC2:
 
-    knife bootstrap -r recipe['brisk'] --sudo -x ubuntu <publicDNS>
+    knife bootstrap -r recipe['cassandra'] --sudo -x ubuntu <publicDNS>
 
 For a CentOS 5 Machine:
 
-    knife bootstrap -r "recipe['brisk']" --sudo -x root -d centos5-gems <publicDNS>
+    knife bootstrap -r "recipe['cassandra']" --sudo -x root -d centos5-gems <publicDNS>
 
 For a RedHat 5 Machine (Untested):
 
     wget http://goo.gl/0k8mV -O- > ~/.chef/bootstrap/rhel5-rbel.erb
     knife bootstrap --sudo -x root -d rhel5-rbel <publicDNS>
-    knife bootstrap -r recipe['brisk'] --sudo -x root -d rhel5-rbel <publicDNS>
+    knife bootstrap -r recipe['cassandra'] --sudo -x root -d rhel5-rbel <publicDNS>
 
 
 == Other Useful Debugging Commands
@@ -160,5 +155,5 @@ For a RedHat 5 Machine (Untested):
 This commands shows the json for a chosen machine that is accessible through the Chef script:
 
     knife node show Server01 --format json
-    knife cookbook metadata brisk -o cookbooks
+    knife cookbook metadata cassandra -o cookbooks
     

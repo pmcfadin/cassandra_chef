@@ -24,18 +24,21 @@ Run this line from your default chef folder:
 where <role> is the value declared as default[:setup][:current_role]. Edit the file to look very similar to this:
 
     {
-      "name": "ycsb",
+      "name": "ycsb08",
       "default_attributes": {
       },
       "json_class": "Chef::Role",
       "env_run_lists": {
       },
       "run_list": [
-        "recipe[ycsb]"  # This is the line of importance
+        "recipe[ycsb]"
       ],
       "description": "",
       "chef_type": "role",
       "override_attributes": {
+        "setup": {
+          "test": "CassandraClient8"
+        }
       }
     }
 
@@ -52,41 +55,9 @@ where <role> is the value declared as default[:setup][:current_role]. Edit the f
       "description": "",
       "chef_type": "role",
       "override_attributes": {
-        "cassandra": { "current_role": "cassandra07", "deployment": "07x", "tag": "cassandra-0.7.8", "ycsb_tag": "cassandra-0.7", "ycsb_package": "CassandraClient7" }
-      }
-    }
-
-    {
-      "name": "cassandra07",
-      "default_attributes": {
-      },
-      "json_class": "Chef::Role",
-      "env_run_lists": {
-      },
-      "run_list": [
-        "recipe[brisk]"
-      ],
-      "description": "",
-      "chef_type": "role",
-      "override_attributes": {
-        "setup": { "deployment": "07x", "current_role": "cassandra07" }
-      }
-    }
-
-    {
-      "name": "cassandra08",
-      "default_attributes": {
-      },
-      "json_class": "Chef::Role",
-      "env_run_lists": {
-      },
-      "run_list": [
-        "recipe[brisk]"
-      ],
-      "description": "",
-      "chef_type": "role",
-      "override_attributes": {
-        "setup": { "deployment": "08x", "current_role": "cassandra08" }
+        "setup": {
+          "test": "CassandraClient7"
+        }
       }
     }
 

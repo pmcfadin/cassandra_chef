@@ -25,21 +25,13 @@ else
   end
 end
 
-# Find the position of the current node in the ring
-cluster_nodes = search(:node, "role:#{node[:cassandra][:current_role]}")
+###################################################
+# 
+# Call the test switch
+# 
+###################################################
 
-# Find all cluster node IP addresses
-nodeIPcsv = ""
-for i in (0..cluster_nodes.count-1)
-  if nodeIPcsv != ""
-    nodeIPcsv << ","
-  end
-  nodeIPcsv << cluster_nodes[i][:cloud][:private_ips].first
-end
-Chef::Log.info "Currently seen nodes: #{nodeIPcsv}"
-
-firstNode = cluster_nodes[0][:cloud][:private_ips].first
-
+include_recipe "ycsb::test_switch"
 
 ###################################################
 # 
@@ -60,7 +52,7 @@ case node[:platform]
     
     # Adds the Cassandra repo:
     # deb http://www.apache.org/dist/cassandra/debian <07x|08x> main
-    if node[:cassandra][:deployment] == "08x" or node[:cassandra][:deployment] == "07x"
+    if node[:setup][:test] == "CassandraClient8" or node[:setup][:test] == "CassandraClient7"
       apt_repository "datastax-repo" do
         uri "http://www.apache.org/dist/cassandra/debian"
         components [node[:cassandra][:deployment], "main"]
@@ -141,118 +133,22 @@ package "ant"
 # 
 ###################################################
 
-execute "git clone git://github.com/joaquincasares/YCSB.git ~/YCSB"
+# Clone and build YCSB
+execute "git clone git://github.com/brianfrankcooper/YCSB.git ~/YCSB"
+cookbook_file "#{node[:setup][:home]}/YCSB/db/jdbc/src/com/yahoo/ycsb/db/JdbcDBClient.java" do
+  source "JdbcDBClient.java"
+  mode "0644"
+end
+
 execute "ant" do
   command "ant"
   cwd "#{node[:setup][:home]}/YCSB"
 end
 
+# Write the Google Charts-YCSB script
 cookbook_file "#{node[:setup][:home]}/generateChart.py" do
   source "generateChart.py"
   mode "0755"
-end
-
-###################################################
-# 
-# Install Cassandra
-# 
-###################################################
-
-
-if node[:cassandra][:deployment] == "07x"
-  package "cassandra" do
-    notifies :stop, resources(:service => "cassandra"), :immediately
-  end
-end
-
-if node[:cassandra][:deployment] == "08x"
-  case node[:platform]
-    when "ubuntu", "debian"
-      package "cassandra" do
-        notifies :stop, resources(:service => "cassandra"), :immediately
-      end
-    when "centos", "redhat", "fedora"
-      package "cassandra08" do
-        notifies :stop, resources(:service => "cassandra08"), :immediately
-      end
-  end
-end
-
-###################################################
-# 
-# Copy Cassandra Jars
-# 
-###################################################
-
-script "copyCassandraJars" do
-  interpreter "bash"
-  user "root"
-  cwd "#{node[:setup][:home]}"
-  code <<-EOH
-  git clone git://github.com/apache/cassandra.git
-  cd cassandra
-  git checkout tags/#{node[:cassandra][:tag]}
-  ant jar
-  cp build/*.jar #{node[:setup][:home]}/YCSB/db/#{node[:cassandra][:ycsb_tag]}/lib/
-  cp lib/*.jar #{node[:setup][:home]}/YCSB/db/#{node[:cassandra][:ycsb_tag]}/lib/
-  EOH
-end
-
-###################################################
-# 
-# Prepare tests
-# 
-###################################################
-
-# Build YSCB testing components
-execute "buildYCSBModule" do
-  command "ant dbcompile-#{node[:cassandra][:ycsb_tag]}"
-  cwd "#{node[:setup][:home]}/YCSB"
-end
-
-if node[:cassandra][:deployment] == "07x"
-  # Setup Cassandra testing keyspace
-  script "setupCassandraTestingCF" do
-    interpreter "bash"
-    user "root"
-    cwd "#{node[:setup][:home]}"
-    code <<-EOH
-    cassandra-cli -h #{firstNode} <<EOF
-    create keyspace usertable 
-      with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
-      and replication_factor= 3; 
-    use usertable;
-    create column family data;
-  EOF
-    EOH
-  end
-end
-
-if node[:cassandra][:deployment] == "08x"
-  # Setup Cassandra testing keyspace
-  script "setupCassandraTestingCF" do
-    interpreter "bash"
-    user "root"
-    cwd "#{node[:setup][:home]}"
-    code <<-EOH
-    cassandra-cli -h #{firstNode} <<EOF
-    create keyspace usertable 
-      with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
-      and strategy_options = [{replication_factor:3}];
-    use usertable;
-    create column family data;
-  EOF
-    EOH
-  end
-end
-
-# Allow the keyspace to propagate to the rest of the cluster
-ruby_block "schemaPropagation" do
-  block do
-    Chef::Log.info "Waiting 10 seconds for Schema propagation..."
-    sleep 10
-  end
-  action :create
 end
 
 # Write the custom DataStax workloads out
@@ -264,103 +160,13 @@ workloads.each do |workload|
   end
 end
 
-# Modify the custom Datastax workloads with the appropriate host names
-ruby_block "modifyWorkloadWithHosts" do
-  block do
-    workloads.each do |workloadName|
-      filename = "#{node[:setup][:home]}/YCSB/workloads/#{workloadName}"
-      workload = File.read(filename)
-      workload << "\nhosts=#{nodeIPcsv}\n"
-      File.open(filename, 'w') {|f| f.write(workload) }
-    end
-  end
-end
-
 ###################################################
 # 
-# Prime the cluster
+# Install and Run Database YCSB Tests
 # 
 ###################################################
 
-# # Output the workload and starting ring information to a stats file
-# execute "echo 'Testing #{node[:cassandra][:tag]} with YCSB:#{node[:cassandra][:ycsb_tag]}' > ~/DataStaxWorkload-load.stats"
-# execute "cat ~/YCSB/workloads/DataStaxInsertWorkload >> ~/DataStaxWorkload-load.stats"
-# execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
-# execute "nodetool -h #{firstNode} ring >> ~/DataStaxWorkload-load.stats"
-# execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
-
-# # Run the preload
-# execute "runYCSBLoader" do
-#   command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/DataStaxInsertWorkload -s -load >> ~/DataStaxWorkload-load.stats 2>&1"
-#   cwd "#{node[:setup][:home]}/YCSB"
-# end
-
-# # Output the ring information to a stats file
-# execute "echo '====================================\n' >> ~/DataStaxWorkload-load.stats"
-# execute "nodetool -h #{firstNode} ring >> ~/DataStaxWorkload-load.stats"
-
-# # Print results
-# execute "echo 'RESULTS FOR: DataStaxWorkload-load.stats' | tee ~/DataStaxWorkload-load-results.stats"
-# execute "grep RunTime #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
-# execute "grep Throughput #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
-# execute "grep AverageLatency #{node[:setup][:home]}/DataStaxWorkload-load.stats | tee -a ~/DataStaxWorkload-load-results.stats"
-
-# ###################################################
-# # 
-# # Run tests
-# # 
-# ###################################################
-
-# workloads.each do |workload|
-#   # Output the workload and starting ring information to a stats file
-#   execute "echo 'Testing #{node[:cassandra][:tag]} with YCSB:#{node[:cassandra][:ycsb_tag]}:#{workload}' > ~/#{workload}-test.stats"
-#   execute "cat ~/YCSB/workloads/#{workload} >> ~/#{workload}-test.stats"
-#   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
-#   execute "nodetool -h #{firstNode} ring >> ~/#{workload}-test.stats"
-#   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
-
-#   # Run the preload
-#   execute "runYCSBTest" do
-#     command "java -cp build/ycsb.jar:db/#{node[:cassandra][:ycsb_tag]}/lib/* com.yahoo.ycsb.Client -db com.yahoo.ycsb.db.#{node[:cassandra][:ycsb_package]} -P workloads/#{workload} -s -t    >> ~/#{workload}-test.stats 2>&1"
-#     cwd "#{node[:setup][:home]}/YCSB"
-#   end
-
-#   # Output the ring information to a stats file
-#   execute "echo '====================================\n' >> ~/#{workload}-test.stats"
-#   execute "nodetool -h #{firstNode} ring >> ~/#{workload}-test.stats"
-
-#   # Print results
-#   execute "echo 'RESULTS FOR: #{workload}-test.stats' | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
-#   execute "grep RunTime #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
-#   execute "grep Throughput #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats | tee -a ~/DataStaxWorkload-test-results.stats"
-#   execute "grep AverageLatency #{node[:setup][:home]}/#{workload}-test.stats | tee -a ~/DataStaxWorkload-test-results-full.stats"
-# end
-
-cookbook_file "#{node[:setup][:home]}/ycsb_kicker.sh" do
-  source "ycsb_kicker.sh"
-  mode "0755"
-end
-
-template "#{node[:setup][:home]}/ycsb_tester.sh" do
-  source "ycsb_tester.erb"
-  mode "0755"
-  variables({
-    :workload_list => workloads.join(" "),
-    :first_node => firstNode
-  })
-end
-
-execute "~/ycsb_kicker.sh"
-
-Chef::Log.info "Tests have started running via 'screen'."
-
-###################################################
-# 
-# Print results
-# 
-###################################################
-
-# execute "cat ~/DataStaxWorkload-test-results.stats"
+include_recipe node[:setup][:ycsb_recipe]
 
 ###################################################
 # 
@@ -368,13 +174,6 @@ Chef::Log.info "Tests have started running via 'screen'."
 # 
 ###################################################
 
-execute "chown -R ubuntu:ubuntu ~/"
-
-###################################################
-# 
-# Remove the MOTD
-# 
-###################################################
-
 execute "rm -rf /etc/motd"
 execute "touch /etc/motd"
+execute "chown -R ubuntu:ubuntu ~/"

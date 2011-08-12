@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "apt": ">= 0.0.0"
+    "apt": ">= 0.0.0",
+    "cassandra": ">= 0.0.0"
   },
   "name": "brisk",
   "maintainer_email": "joaquin@datastax.com",
@@ -19,34 +20,6 @@
       "display_name": "Cassandra Commit Log Directory",
       "description": "The location for the commit log (preferably on it's own drive or RAID0 device)"
     },
-    "opscenter/portin07": {
-      "required": "optional",
-      "calculated": false,
-      "choice": [
-
-      ],
-      "default": "8080",
-      "type": "string",
-      "recipes": [
-
-      ],
-      "display_name": "OpsCenter Port in Cassandra 0.7",
-      "description": "The port that OpsCenter uses to connect to Cassandra"
-    },
-    "opscenter/install": {
-      "required": "optional",
-      "calculated": false,
-      "choice": [
-
-      ],
-      "default": "false",
-      "type": "string",
-      "recipes": [
-
-      ],
-      "display_name": "Switch to install OpsCenter",
-      "description": "Installs OpsCenter if set to true"
-    },
     "brisk/endpoint_snitch": {
       "required": "optional",
       "calculated": false,
@@ -61,21 +34,7 @@
       "display_name": "Brisk Endpoint Snitch",
       "description": "How Cassandra knows your network topology to route requests efficiently"
     },
-    "opscenter/portin08": {
-      "required": "optional",
-      "calculated": false,
-      "choice": [
-
-      ],
-      "default": "7199",
-      "type": "string",
-      "recipes": [
-
-      ],
-      "display_name": "OpsCenter Port in Cassandra 0.8",
-      "description": "The port that OpsCenter uses to connect to Cassandra"
-    },
-    "opscenter/free": {
+    "cassandra/token_position": {
       "required": "optional",
       "calculated": false,
       "choice": [
@@ -86,8 +45,8 @@
       "recipes": [
 
       ],
-      "display_name": "Switch to install free OpsCenter",
-      "description": "Installs free OpsCenter if set to true, if not it installs from the paid repo"
+      "display_name": "Cassandra Initial Token Position",
+      "description": "For use when adding a node that may have previously failed or been destroyed"
     },
     "cassandra/data_dir": {
       "required": "optional",
@@ -102,20 +61,6 @@
       ],
       "display_name": "Cassandra Data Directory",
       "description": "The location for the data directory (preferably on it's own drive or RAID0 device)"
-    },
-    "cassandra/token_position": {
-      "required": "optional",
-      "calculated": false,
-      "choice": [
-
-      ],
-      "default": "false",
-      "type": "string",
-      "recipes": [
-
-      ],
-      "display_name": "Cassandra Initial Token Position",
-      "description": "For use when adding a node that may have previously failed or been destroyed"
     },
     "cassandra/initial_token": {
       "required": "optional",
@@ -187,33 +132,19 @@
       "display_name": "Cluster Size",
       "description": "Total number of nodes in the cluster"
     },
-    "opscenter/pass": {
+    "cassandra/confPath": {
       "required": "optional",
       "calculated": false,
       "choice": [
 
       ],
-      "default": "false",
+      "default": "/etc/brisk/cassandra/",
       "type": "string",
       "recipes": [
 
       ],
-      "display_name": "OpsCenter password",
-      "description": "The password given during OpsCenter registration"
-    },
-    "opscenter/interface": {
-      "required": "optional",
-      "calculated": false,
-      "choice": [
-
-      ],
-      "default": "0.0.0.0",
-      "type": "string",
-      "recipes": [
-
-      ],
-      "display_name": "OpsCenter Interface",
-      "description": "The interface accessible via your browser"
+      "display_name": "Cassandra Settings Path",
+      "description": "The path for cassandra.yaml and cassandra-env.sh"
     },
     "setup": {
       "required": "optional",
@@ -228,19 +159,6 @@
       "display_name": "Setup Configurations",
       "description": "Hash of Setup Configurations"
     },
-    "opscenter": {
-      "required": "optional",
-      "calculated": false,
-      "choice": [
-
-      ],
-      "type": "hash",
-      "recipes": [
-
-      ],
-      "display_name": "OpsCenter",
-      "description": "Hash of OpsCenter attributes"
-    },
     "setup/vanilla_nodes": {
       "required": "optional",
       "calculated": false,
@@ -254,20 +172,6 @@
       ],
       "display_name": "Number of Vanilla Nodes",
       "description": "Number of nodes that will start up vanilla Cassandra"
-    },
-    "opscenter/user": {
-      "required": "optional",
-      "calculated": false,
-      "choice": [
-
-      ],
-      "default": "false",
-      "type": "string",
-      "recipes": [
-
-      ],
-      "display_name": "OpsCenter username",
-      "description": "The username given during OpsCenter registration"
     },
     "brisk": {
       "required": "optional",
@@ -316,12 +220,18 @@
   "platforms": {
   },
   "maintainer": "DataStax",
-  "long_description": "= DESCRIPTION:\n\nThis script launches a DataStax' Brisk cluster of a predetermined size. It also includes OpsCenter installation and Configuration support.\n\nThis has been tested in Ubuntu 10.10 and CentOS 5.5, but should support your version of Ubuntu, CentOS, and RedHat.\n\nThis script will be developed and housed at: https://github.com/riptano/chef. On every Brisk release, however, expect https://github.com/riptano/brisk to contain the newest version.\n\n= REQUIREMENTS:\n\nFollow the instructions as listed here: http://wiki.opscode.com/display/chef/Quick+Start.\n\n== Configure cloud access\n\nProceed to configure your cloud access by adding these following lines to your ~/.chef/knife.rb file.\n\n    # Information can be found at: https://manage.rackspacecloud.com/APIAccess.do\n    knife[:rackspace_api_username] = \"USER\"\n    knife[:rackspace_api_key]      = \"KEY\"\n\n    # Information can be found at: https://aws-portal.amazon.com/gp/aws/developer/account?ie=UTF8&action=access-key\n    knife[:aws_access_key_id]     = \"ID\"\n    knife[:aws_secret_access_key] = \"KEY\"\n\nPlace this 'brisk/cookbooks/brisk' directory into your cookbooks folder.\n\nDownload and place the apt recipe in your cookbooks folder. The apt recipe can be found here: http://community.opscode.com/cookbooks/apt\n\nThen run:\n\n    knife cookbook upload -a -o cookbooks/\n\nYou should see something similar to:\n\n    Uploading apt                     [1.1.2]\n    Uploading brisk                   [0.1.4]\n    Uploading chef-client             [0.99.5]\n    upload complete\n\n= ATTRIBUTES:\n\nThe main attributes to look can be found at $CHEF_HOME/cookbooks/brisk/attributes/default.rb and are:\n\n    # Needed for the Chef script to function properly\n    default[:setup][:deployment] = \"brisk\"  # Choices are \"07x\", \"08x\", or \"brisk\"\n    default[:setup][:cluster_size] = 4\n    default[:setup][:current_role] = \"brisk\"\n\n    # A unique name is perferred to stop the risk of \n    default[:cassandra][:cluster_name] = \"Brisk Cluster\"\n\n    # Brisk settings\n    default[:brisk][:vanilla_nodes] = 2\n\n    # OpsCenter settings\n    default[:opscenter][:install] = false\n    default[:opscenter][:user] = false\n    default[:opscenter][:pass] = false\n    default[:opscenter][:free] = false\n\nThe first set are highly mandatory. These will configure a ring of set size with the included number of vanilla Cassandra nodes (nodes that are not running task trackers). The splitting of the ring will go based on the number of nodes that it finds that also match the :current_role. So make sure to create new roles and update this attribute between launching your cluster.\n\nThe attribute for :cluster_name is set to prevent clusters from merging into themselves. This attribute doesn't require change to work, but will greatly uncomplicate certain scenarios.\n\nThe last set of attributes are for OpsCenter installation. Just provide the username and password that you received during registration and mark whether this is a free installation or not. To obtain a free OpsCenter license, please visit: http://www.datastax.com/opscenter.\n\nAfter properly configuring the attributes, upload the cookbook files again by running:\n\n    knife cookbook upload -a -o cookbooks/\n\n= USAGE:\n\n== Configure roles\n\nRun this line from your default chef folder:\n\n    knife role create <role>\n\nwhere <role> is the value declared as default[:setup][:current_role]. Edit the file to look very similar to this:\n\n    {\n      \"name\": \"brisk\",\n      \"default_attributes\": {\n      },\n      \"json_class\": \"Chef::Role\",\n      \"env_run_lists\": {\n      },\n      \"run_list\": [\n        \"recipe[brisk]\"  # This is the line of importance\n      ],\n      \"description\": \"\",\n      \"chef_type\": \"role\",\n      \"override_attributes\": {\n      }\n    }\n\n== Starting up a cluster\n\nAn Ubuntu 10.10 cloud in Rackspace:\n\n    knife rackspace server create -r \"role[brisk]\" -i 69 -f 6 -S Server01 -N Server01\n    knife rackspace server create -r \"role[brisk]\" -i 69 -f 6 -S Server02 -N Server02\n    knife rackspace server create -r \"role[brisk]\" -i 69 -f 6 -S Server03 -N Server03\n    knife rackspace server create -r \"role[brisk]\" -i 69 -f 6 -S Server04 -N Server04\n\nAn Ubuntu 10.10 cloud in EC2:\n\n    pemname=<pemFileName>  # do not include \".pem\"\n    group=<securityGroupName>\n    knife ec2 server create -r \"role[brisk]\" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server01\n    knife ec2 server create -r \"role[brisk]\" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server02\n    knife ec2 server create -r \"role[brisk]\" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server03\n    knife ec2 server create -r \"role[brisk]\" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server04\n\nNOTE: These AMIs only work in the US-East region. For all other regions, see http://cloud.ubuntu.com/ami/.\n\nA Debian 6.0 (Squeeze) cloud in Rackspace:\n\n    knife rackspace server create -r \"role[brisk]\" -i 75 -f 6 -S Server01 -N Server01\n    knife rackspace server create -r \"role[brisk]\" -i 75 -f 6 -S Server02 -N Server02\n    knife rackspace server create -r \"role[brisk]\" -i 75 -f 6 -S Server03 -N Server03\n    knife rackspace server create -r \"role[brisk]\" -i 75 -f 6 -S Server04 -N Server04\n\nA CentOS 5.5 cloud in Rackspace:\n\n    knife rackspace server create -r \"role[brisk]\" -i 51 -f 6 -d centos5-gems -S Server01 -N Server01\n    knife rackspace server create -r \"role[brisk]\" -i 51 -f 6 -d centos5-gems -S Server02 -N Server02\n    knife rackspace server create -r \"role[brisk]\" -i 51 -f 6 -d centos5-gems -S Server03 -N Server03\n    knife rackspace server create -r \"role[brisk]\" -i 51 -f 6 -d centos5-gems -S Server04 -N Server04\n\nNOTE: You can run these lines more times as long as the attributes are set properly. Also, these lines should be run consecutively and never in parallel.\n\n== Bootstrapping Commands\n\nIn order to run bootstrapping commands, you must be able to complete a passwordless SSH login. Typically, by copying your ~/.ssh/id_rsa.pub key into the target machine's ~/.ssh/authorized_keys file, passwordless SSH should work. Search google for more information.\n\nFor an Ubuntu/Debian Machine:\n\n    knife bootstrap -r recipe['brisk'] --sudo -x root <publicDNS>\n\nFor an Ubuntu Machine on EC2:\n\n    knife bootstrap -r recipe['brisk'] --sudo -x ubuntu <publicDNS>\n\nFor a CentOS 5 Machine:\n\n    knife bootstrap -r \"recipe['brisk']\" --sudo -x root -d centos5-gems <publicDNS>\n\nFor a RedHat 5 Machine (Untested):\n\n    wget http://goo.gl/0k8mV -O- > ~/.chef/bootstrap/rhel5-rbel.erb\n    knife bootstrap --sudo -x root -d rhel5-rbel <publicDNS>\n    knife bootstrap -r recipe['brisk'] --sudo -x root -d rhel5-rbel <publicDNS>\n\n\n== Other Useful Debugging Commands\n\nThis commands shows the json for a chosen machine that is accessible through the Chef script:\n\n    knife node show Server01 --format json\n    knife cookbook metadata brisk -o cookbooks\n    \n",
+  "long_description": "= DESCRIPTION:\n\nThis script launches a DataStax' Brisk cluster of a predetermined size.\n\nThis has been tested in Ubuntu 10.10 and CentOS 5.5, but should support your version of Ubuntu, CentOS, and RedHat.\n\nThis script will be developed and housed at: https://github.com/riptano/chef.\n\n= REQUIREMENTS:\n\nFollow the instructions as listed here: http://wiki.opscode.com/display/chef/Quick+Start.\n\n== Configure cloud access\n\nProceed to configure your cloud access by adding these following lines to your ~/.chef/knife.rb file.\n\n    # Information can be found at: https://manage.rackspacecloud.com/APIAccess.do\n    knife[:rackspace_api_username] = \"USER\"\n    knife[:rackspace_api_key]      = \"KEY\"\n\n    # Information can be found at: https://aws-portal.amazon.com/gp/aws/developer/account?ie=UTF8&action=access-key\n    knife[:aws_access_key_id]     = \"ID\"\n    knife[:aws_secret_access_key] = \"KEY\"\n\nPlace this directory into your cookbooks folder.\n\nDownload and place the cassandra and apt cookbooks in your cookbooks folder. \nThe cassandra cookbook can be found here: https://github.com/riptano/chef.\nThe apt recipe can be found here: http://community.opscode.com/cookbooks/apt\n\nThen run:\n\n    knife cookbook upload -a -o cookbooks/\n\nYou should see something similar to:\n\n    Uploading apt                     [1.1.2]\n    Uploading brisk                   [0.1.4]\n    Uploading cassandra               [0.1.4]\n    Uploading chef-client             [0.99.5]\n    upload complete\n\n= ATTRIBUTES:\n\nThe main attributes to look can be found at $CHEF_HOME/cookbooks/brisk/attributes/default.rb and are:\n\n    # Needed for the Chef script to function properly\n    normal[:setup][:deployment] = \"brisk\"\n    normal[:setup][:cluster_size] = 4\n    normal[:setup][:current_role] = \"brisk\"\n\n    # A unique name is preferred to stop the risk of different clusters joining each other\n    normal[:cassandra][:cluster_name] = \"Brisk Cluster\"\n\n    # It is best to have the commit log and the data\n    # directory on two seperate drives\n    normal[:cassandra][:commitlog_dir] = \"/var/lib\"\n    normal[:cassandra][:data_dir] = \"/var/lib\"\n\n    # The number of non-task trackers you wish to run\n    default[:brisk][:vanilla_nodes] = 2\n\nFor more information, look over $CHEF_HOME/cookbooks/brisk/metadata.rb.\n\nTo obtain a free OpsCenter license, please visit: http://www.datastax.com/opscenter.\n\nAfter properly configuring the attributes, upload the cookbook files again by running:\n\n    knife cookbook upload -a -o cookbooks/\n\n= USAGE:\n\n== Configure roles\n\nRun this line from your default chef folder:\n\n    knife role create brisk\n\nwhere \"brisk\" is the value declared as default[:setup][:current_role]. Edit the file to look very similar to this:\n\n    {\n      \"name\": \"brisk\",\n      \"default_attributes\": {\n      },\n      \"json_class\": \"Chef::Role\",\n      \"env_run_lists\": {\n      },\n      \"run_list\": [\n        \"recipe[brisk]\"  # This is the line of importance\n      ],\n      \"description\": \"\",\n      \"chef_type\": \"role\",\n      \"override_attributes\": {\n      }\n    }\n\nThis means that the role, that you can assign to many machines, will run this recipe upon assignment and will be bound within a group for easy clustering.\n\n== Starting up a cluster\n\nAn Ubuntu 10.10 cloud in Rackspace:\n\n    knife rackspace server create -r \"role[brisk]\" -i 69 -f 6 -S Server01 -N Server01\n    knife rackspace server create -r \"role[brisk]\" -i 69 -f 6 -S Server02 -N Server02\n    knife rackspace server create -r \"role[brisk]\" -i 69 -f 6 -S Server03 -N Server03\n    knife rackspace server create -r \"role[brisk]\" -i 69 -f 6 -S Server04 -N Server04\n\nAn Ubuntu 10.10 cloud in EC2:\n\n    pemname=<pemFileName>  # do not include \".pem\"\n    group=<securityGroupName>\n    knife ec2 server create -r \"role[brisk]\" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server01\n    knife ec2 server create -r \"role[brisk]\" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server02\n    knife ec2 server create -r \"role[brisk]\" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server03\n    knife ec2 server create -r \"role[brisk]\" -I ami-08f40561 --flavor m1.large -S $pemname -G $group -x ubuntu -N Server04\n\nNOTE: These AMIs only work in the US-East region. For all other regions, see http://cloud.ubuntu.com/ami/.\n\nA Debian 6.0 (Squeeze) cloud in Rackspace:\n\n    knife rackspace server create -r \"role[brisk]\" -i 75 -f 6 -S Server01 -N Server01\n    knife rackspace server create -r \"role[brisk]\" -i 75 -f 6 -S Server02 -N Server02\n    knife rackspace server create -r \"role[brisk]\" -i 75 -f 6 -S Server03 -N Server03\n    knife rackspace server create -r \"role[brisk]\" -i 75 -f 6 -S Server04 -N Server04\n\nA CentOS 5.5 cloud in Rackspace:\n\n    knife rackspace server create -r \"role[brisk]\" -i 51 -f 6 -d centos5-gems -S Server01 -N Server01\n    knife rackspace server create -r \"role[brisk]\" -i 51 -f 6 -d centos5-gems -S Server02 -N Server02\n    knife rackspace server create -r \"role[brisk]\" -i 51 -f 6 -d centos5-gems -S Server03 -N Server03\n    knife rackspace server create -r \"role[brisk]\" -i 51 -f 6 -d centos5-gems -S Server04 -N Server04\n\nNOTE: You can run these lines more times as long as the attributes are set properly. Also, these lines should be run consecutively and never in parallel.\n\n== Bootstrapping Commands\n\nIn order to run bootstrapping commands, you must be able to complete a passwordless SSH login. Typically, by copying your ~/.ssh/id_rsa.pub key into the target machine's ~/.ssh/authorized_keys file, passwordless SSH should work. Search google for more information.\n\nFor an Ubuntu/Debian Machine:\n\n    knife bootstrap -r recipe['brisk'] --sudo -x root <publicDNS>\n\nFor an Ubuntu Machine on EC2:\n\n    knife bootstrap -r recipe['brisk'] --sudo -x ubuntu <publicDNS>\n\nFor a CentOS 5 Machine:\n\n    knife bootstrap -r \"recipe['brisk']\" --sudo -x root -d centos5-gems <publicDNS>\n\nFor a RedHat 5 Machine (Untested):\n\n    wget http://goo.gl/0k8mV -O- > ~/.chef/bootstrap/rhel5-rbel.erb\n    knife bootstrap --sudo -x root -d rhel5-rbel <publicDNS>\n    knife bootstrap -r recipe['brisk'] --sudo -x root -d rhel5-rbel <publicDNS>\n\n\n== Other Useful Debugging Commands\n\nThis commands shows the json for a chosen machine that is accessible through the Chef script:\n\n    knife node show Server01 --format json\n    knife cookbook metadata brisk -o cookbooks\n    \n",
   "version": "0.1.4",
   "recommendations": {
   },
   "recipes": {
-    "brisk::default": "Currently the only script needed."
+    "brisk::restart_service": "Restarts the Brisk service.",
+    "brisk::write_configs": "Writes the configurations for Brisk.",
+    "brisk::install": "Installs the actual DataStax' Brisk package.",
+    "brisk::create_seed_list": "Generates the seed lists for the cluster.",
+    "brisk::token_generation": "Generates the token positions for the cluster.",
+    "brisk::default": "Runs the full list of scripts needed.",
+    "brisk::additional_settings": "Additional settings for optimal performance for the cluster."
   },
   "groupings": {
   },

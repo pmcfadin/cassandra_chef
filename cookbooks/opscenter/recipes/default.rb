@@ -1,5 +1,5 @@
 #
-# Cookbook Name:: brisk
+# Cookbook Name:: opscenter
 # Recipe:: default
 #
 # Copyright 2011, DataStax
@@ -13,15 +13,15 @@
 # 
 ###################################################
 
-# Stop Brisk if it is running.
+# Stop Cassandra and OpsCenter if they are running.
 # Different for Debian due to service package.
 if node[:platform] == "debian"
-  service "brisk" do
+  service "opscenterd" do
     action :stop
     ignore_failure true
   end
 else
-  service "brisk" do
+  service "opscenterd" do
     action :stop
   end
 end
@@ -30,36 +30,36 @@ end
 OPTIONAL_INSTALL = true
 
 
-
+include_recipe "opscenter::check_pre_reqs"
 
 
 include_recipe "cassandra::setup_repos"
-
+include_recipe "opscenter::setup_repos"
 
 include_recipe "cassandra::required_packages"
 
 
 if OPTIONAL_INSTALL
-  include_recipe "cassandra::optional_packages"
+  include_recipe "opscenter::optional_packages"
 end
 
 
-include_recipe "brisk::install"
+include_recipe "opscenter::install"
 
 
-# include_recipe "cassandra::raid"
+
 
 
 include_recipe "cassandra::additional_settings"
-include_recipe "brisk::additional_settings"
-
-include_recipe "brisk::token_generation"
 
 
-include_recipe "brisk::create_seed_list"
 
 
-include_recipe "cassandra::write_configs"
-include_recipe "brisk::write_configs"
 
-include_recipe "brisk::restart_service"
+include_recipe "opscenter::create_seed_list"
+
+
+include_recipe "opscenter::write_configs"
+
+
+include_recipe "opscenter::restart_service"
