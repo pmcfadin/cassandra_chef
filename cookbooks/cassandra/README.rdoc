@@ -91,6 +91,16 @@ where "cassandra" is the value declared as default[:setup][:current_role]. Edit 
 
 This means that the role, that you can assign to many machines, will run this recipe upon assignment and will be bound within a group for easy clustering.
 
+== Ports Needed
+
+    Public Facing:
+        Cassandra:
+            9160: Cassandra client port
+            7199: Cassandra JMX port, (8080 in 07x)
+    Internal:
+        Cassandra:
+            7000: Cassandra intra-node port
+
 == Starting up a cluster
 
 An Ubuntu 10.10 cloud in Rackspace:

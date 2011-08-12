@@ -88,6 +88,15 @@ Edit the file to look very similar to this:
 
 This means that the role, that you can assign to many machines, will run this recipe upon assignment.
 
+== Ports Needed
+
+    Public Facing:
+        OpsCenter:
+            8888: OpsCenter website port
+    Internal:
+        OpsCenter:
+            1024+: OpsCenter intra-node monitoring ports
+
 == Starting up a cluster
 
 An Ubuntu 10.10 OpsCenter machine in Rackspace:

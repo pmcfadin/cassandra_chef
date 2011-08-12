@@ -21,7 +21,7 @@ if "#{node[:setup][:test]}" == "CassandraClient8"
   node[:setup][:additional_properties] = ""
   node[:setup][:ycsb_recipe] = "ycsb::cassandra"
 
-  node[:cassandra][:current_role] = "cassandra08"
+  node[:cassandra][:current_role] = "cassandra"
   node[:cassandra][:deployment] = "08x"
 
 elsif "#{node[:setup][:test]}" == "CassandraClient7"

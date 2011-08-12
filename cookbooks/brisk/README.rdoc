@@ -96,6 +96,20 @@ where "brisk" is the value declared as default[:setup][:current_role]. Edit the 
 
 This means that the role, that you can assign to many machines, will run this recipe upon assignment and will be bound within a group for easy clustering.
 
+== Ports Needed
+
+    Public Facing:
+        Cassandra:
+            9160: Cassandra client port
+            7199: Cassandra JMX port, (8080 in 07x)
+        Brisk Specific:
+            8012: Hadoop Job Tracker client port
+            50030: Hadoop Job Tracker website port
+            50060: Hadoop Task Tracker website port
+    Internal:
+        Cassandra:
+            7000: Cassandra intra-node port
+
 == Starting up a cluster
 
 An Ubuntu 10.10 cloud in Rackspace:

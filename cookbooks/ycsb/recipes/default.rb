@@ -134,7 +134,7 @@ package "ant"
 ###################################################
 
 # Clone and build YCSB
-execute "git clone git://github.com/brianfrankcooper/YCSB.git ~/YCSB"
+execute "git clone git://github.com/joaquincasares/YCSB.git ~/YCSB"
 cookbook_file "#{node[:setup][:home]}/YCSB/db/jdbc/src/com/yahoo/ycsb/db/JdbcDBClient.java" do
   source "JdbcDBClient.java"
   mode "0644"
