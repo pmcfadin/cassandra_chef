@@ -10,7 +10,49 @@ This script will be developed and housed at: https://github.com/riptano/chef.
 
 Follow the instructions as listed here: http://wiki.opscode.com/display/chef/Quick+Start.
 
+== Configure cloud access
+
+Proceed to configure your cloud access by adding these following lines to your ~/.chef/knife.rb file.
+
+    # Information can be found at: https://manage.rackspacecloud.com/APIAccess.do
+    knife[:rackspace_api_username] = "USER"
+    knife[:rackspace_api_key]      = "KEY"
+
+    # Information can be found at: https://aws-portal.amazon.com/gp/aws/developer/account?ie=UTF8&action=access-key
+    knife[:aws_access_key_id]     = "ID"
+    knife[:aws_secret_access_key] = "KEY"
+
+Place this directory into your cookbooks folder.
+
+Download and place the ycsb and apt cookbooks in your cookbooks folder.
+The apt cookbook can be found here: http://community.opscode.com/cookbooks/apt.
+
+Then run:
+
+    knife cookbook upload -a -o cookbooks/
+
+You should see something similar to:
+
+    Uploading apt                     [1.1.2]
+    Uploading cassandra               [0.1.4]
+    Uploading chef-client             [0.99.5]
+    Uploading ycsb                    [0.1.4]
+    upload complete
+
 = ATTRIBUTES:
+
+The main attributes to look at can be found at $CHEF_HOME/cookbooks/opscenter/attributes/default.rb and are:
+
+    default[:setup][:home] = "/home/ubuntu"
+
+    # Choices of CassandraClient8, CassandraClient7
+    default[:setup][:test] = "CassandraClient8"
+
+For more information, look over $CHEF_HOME/cookbooks/ycsb/metadata.rb.
+
+After properly configuring the attributes, upload the cookbook files again by running:
+
+    knife cookbook upload -a -o cookbooks/
 
 
 = USAGE:

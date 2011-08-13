@@ -26,7 +26,7 @@ Place this directory into your cookbooks folder.
 
 Download and place the cassandra and apt cookbooks in your cookbooks folder. 
 The cassandra cookbook can be found here: https://github.com/riptano/chef.
-The apt recipe can be found here: http://community.opscode.com/cookbooks/apt
+The apt cookbook can be found here: http://community.opscode.com/cookbooks/apt.
 
 Then run:
 

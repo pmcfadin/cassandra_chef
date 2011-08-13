@@ -25,7 +25,7 @@ Proceed to configure your cloud access by adding these following lines to your ~
 Place this directory into your cookbooks folder.
 
 Download and place the apt cookbook in your cookbooks folder. 
-The apt recipe can be found here: http://community.opscode.com/cookbooks/apt
+The apt cookbook can be found here: http://community.opscode.com/cookbooks/apt.
 
 Then run:
 
