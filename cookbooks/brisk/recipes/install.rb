@@ -20,6 +20,9 @@ execute "clear-data" do
   action :nothing
 end
 
+# Sets up a user to own the data directories
+node[:internal][:package_user] = "brisk"
+
 # Installs the latest DataStax' Brisk
 # Install Brisk
 package "brisk-full" do

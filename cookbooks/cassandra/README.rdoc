@@ -105,14 +105,14 @@ The list of the ports required to be open are as follows:
 
 == Starting up a cluster
 
-An Ubuntu 10.10 cloud in Rackspace:
+An Ubuntu 10.10 cloud in Rackspace (login as root):
 
-    knife rackspace server create -r "role[cassandra]" -i 69 -f 6 -S Server01 -N Server01
-    knife rackspace server create -r "role[cassandra]" -i 69 -f 6 -S Server02 -N Server02
-    knife rackspace server create -r "role[cassandra]" -i 69 -f 6 -S Server03 -N Server03
-    knife rackspace server create -r "role[cassandra]" -i 69 -f 6 -S Server04 -N Server04
+    knife rackspace server create -r "role[cassandra]" -I 69 -f 6 -S Server01 -N Server01
+    knife rackspace server create -r "role[cassandra]" -I 69 -f 6 -S Server02 -N Server02
+    knife rackspace server create -r "role[cassandra]" -I 69 -f 6 -S Server03 -N Server03
+    knife rackspace server create -r "role[cassandra]" -I 69 -f 6 -S Server04 -N Server04
 
-An Ubuntu 10.10 cloud in EC2:
+An Ubuntu 10.10 cloud in EC2 (login as ubuntu):
 
     pemname=<pemFileName>  # do not include ".pem"
     group=<securityGroupName>
@@ -123,21 +123,25 @@ An Ubuntu 10.10 cloud in EC2:
 
 NOTE: These AMIs only work in the US-East region. For all other regions, see http://cloud.ubuntu.com/ami/.
 
-A Debian 6.0 (Squeeze) cloud in Rackspace:
+A Debian 6.0 (Squeeze) cloud in Rackspace (login as root):
 
-    knife rackspace server create -r "role[cassandra]" -i 75 -f 6 -S Server01 -N Server01
-    knife rackspace server create -r "role[cassandra]" -i 75 -f 6 -S Server02 -N Server02
-    knife rackspace server create -r "role[cassandra]" -i 75 -f 6 -S Server03 -N Server03
-    knife rackspace server create -r "role[cassandra]" -i 75 -f 6 -S Server04 -N Server04
+    knife rackspace server create -r "role[cassandra]" -I 75 -f 6 -S Server01 -N Server01
+    knife rackspace server create -r "role[cassandra]" -I 75 -f 6 -S Server02 -N Server02
+    knife rackspace server create -r "role[cassandra]" -I 75 -f 6 -S Server03 -N Server03
+    knife rackspace server create -r "role[cassandra]" -I 75 -f 6 -S Server04 -N Server04
 
-A CentOS 5.5 cloud in Rackspace:
+A CentOS 5.5 cloud in Rackspace (login as root):
 
-    knife rackspace server create -r "role[cassandra]" -i 51 -f 6 -d centos5-gems -S Server01 -N Server01
-    knife rackspace server create -r "role[cassandra]" -i 51 -f 6 -d centos5-gems -S Server02 -N Server02
-    knife rackspace server create -r "role[cassandra]" -i 51 -f 6 -d centos5-gems -S Server03 -N Server03
-    knife rackspace server create -r "role[cassandra]" -i 51 -f 6 -d centos5-gems -S Server04 -N Server04
+    knife rackspace server create -r "role[cassandra]" -I 51 -f 6 -d centos5-gems -S Server01 -N Server01
+    knife rackspace server create -r "role[cassandra]" -I 51 -f 6 -d centos5-gems -S Server02 -N Server02
+    knife rackspace server create -r "role[cassandra]" -I 51 -f 6 -d centos5-gems -S Server03 -N Server03
+    knife rackspace server create -r "role[cassandra]" -I 51 -f 6 -d centos5-gems -S Server04 -N Server04
 
 NOTE: You can run these lines more times as long as the attributes are set properly. Also, these lines should be run consecutively and never in parallel.
+
+Keep in mind that these commands start up ONE cluster. By running these same four commands repeatedly, you will keep manipulating the same logical cluster of nodes which may serve unintended results. To create different clusters, either create new roles or remove the previous nodes from OpsCodes's Managment Console (https://manage.opscode.com/nodes). This is due to the fact that these scripts need to know the end size that Cassandra will grow to become to evenly parse the ring.
+
+If you wish to add more nodes to the same cluster, however, then simply change ([:cassandra][:token_position] or [:cassandra][:initial_token]) and [:setup][:cluster_size].
 
 == Bootstrapping Commands
 

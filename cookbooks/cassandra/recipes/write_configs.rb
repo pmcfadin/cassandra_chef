@@ -15,8 +15,8 @@
 
 execute "sudo mkdir -p #{node[:cassandra][:data_dir]}"
 execute "sudo mkdir -p #{node[:cassandra][:commitlog_dir]}"
-execute "sudo chown -R cassandra:cassandra #{node[:cassandra][:data_dir]}"
-execute "sudo chown -R cassandra:cassandra #{node[:cassandra][:commitlog_dir]}"
+execute "sudo chown -R #{node[:internal][:package_user]}:#{node[:internal][:package_user]} #{node[:cassandra][:data_dir]}"
+execute "sudo chown -R #{node[:internal][:package_user]}:#{node[:internal][:package_user]} #{node[:cassandra][:commitlog_dir]}"
 
 ruby_block "buildCassandraEnv" do
   block do

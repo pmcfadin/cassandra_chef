@@ -101,11 +101,11 @@ The list of the ports required to be open are as follows:
 
 == Starting up a cluster
 
-An Ubuntu 10.10 OpsCenter machine in Rackspace:
+An Ubuntu 10.10 OpsCenter machine in Rackspace (login as root):
 
-    knife rackspace server create -r "role[opscenter]" -i 69 -f 6 -S Server01 -N OpsCenter
+    knife rackspace server create -r "role[opscenter]" -I 69 -f 6 -S Server01 -N OpsCenter
 
-An Ubuntu 10.10 OpsCenter machine in EC2:
+An Ubuntu 10.10 OpsCenter machine in EC2 (login as ubuntu):
 
     pemname=<pemFileName>  # do not include ".pem"
     group=<securityGroupName>
@@ -113,13 +113,13 @@ An Ubuntu 10.10 OpsCenter machine in EC2:
 
 NOTE: These AMIs only work in the US-East region. For all other regions, see http://cloud.ubuntu.com/ami/.
 
-A Debian 6.0 (Squeeze) OpsCenter machine in Rackspace:
+A Debian 6.0 (Squeeze) OpsCenter machine in Rackspace (login as root):
 
-    knife rackspace server create -r "role[opscenter]" -i 75 -f 6 -S Server01 -N OpsCenter
+    knife rackspace server create -r "role[opscenter]" -I 75 -f 6 -S Server01 -N OpsCenter
 
-A CentOS 5.5 OpsCenter machine in Rackspace:
+A CentOS 5.5 OpsCenter machine in Rackspace (login as root):
 
-    knife rackspace server create -r "role[opscenter]" -i 51 -f 6 -d centos5-gems -S Server01 -N OpsCenter
+    knife rackspace server create -r "role[opscenter]" -I 51 -f 6 -d centos5-gems -S Server01 -N OpsCenter
 
 NOTE: Also, these lines should be run consecutively and never in parallel with the creation of your cluster.
 

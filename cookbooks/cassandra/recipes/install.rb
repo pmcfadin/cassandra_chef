@@ -20,6 +20,9 @@ execute "clear-data" do
   action :nothing
 end
 
+# Sets up a user to own the data directories
+node[:internal][:package_user] = "cassandra"
+
 # Installs the latest Cassandra 0.7.x
 if node[:setup][:deployment] == "07x"
   package "cassandra" do
