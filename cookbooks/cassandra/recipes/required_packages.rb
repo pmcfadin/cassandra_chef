@@ -16,7 +16,7 @@
 case node[:platform]
   when "ubuntu", "debian"
     # Ensure all native components are up to date
-    execute 'sudo apt-get -y upgrade'
+    # execute 'sudo apt-get -y upgrade'
 
     # Allow for non-interactive Sun Java setup
     execute 'echo "sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true" | sudo debconf-set-selections'
@@ -34,5 +34,5 @@ case node[:platform]
   when "centos", "redhat", "fedora"
     # Ensure all native components are up to date
     execute 'sudo yum -y update'
-    execute 'sudo yum -y upgrade'
+    # execute 'sudo yum -y upgrade'
 end

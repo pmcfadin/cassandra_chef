@@ -13,4 +13,5 @@
 # 
 ###################################################
 
+# TODO: MAKE STICK!
 execute 'sudo bash -c "echo 1 > /proc/sys/vm/overcommit_memory"'
