@@ -76,8 +76,8 @@ attribute "cassandra/seed",
 
 attribute "cassandra/rpc_address",
   :display_name => "Cassandra RPC Address",                                                                                                                                                                        
-  :description => "The address to bind the Thrift RPC service to",
-  :default => "0.0.0.0"
+  :description => "The address to bind the Thrift RPC service to (False sets RPC Address to the private IP)",
+  :default => "false"
 
 attribute "cassandra/confPath",
   :display_name => "Cassandra Settings Path",                                                                                                                                                                        

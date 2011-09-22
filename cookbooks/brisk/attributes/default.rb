@@ -18,7 +18,7 @@ default[:brisk][:vanilla_nodes] = 2
 normal[:cassandra][:token_position] = false
 normal[:cassandra][:initial_token] = false
 normal[:cassandra][:seed] = false
-normal[:cassandra][:rpc_address] = "0.0.0.0"
+normal[:cassandra][:rpc_address] = false
 normal[:cassandra][:confPath] = "/etc/brisk/cassandra/"
 
 # Advanced Brisk settings

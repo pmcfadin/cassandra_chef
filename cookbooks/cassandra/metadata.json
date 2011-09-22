@@ -191,13 +191,13 @@
       "choice": [
 
       ],
-      "default": "0.0.0.0",
+      "default": "false",
       "type": "string",
       "recipes": [
 
       ],
       "display_name": "Cassandra RPC Address",
-      "description": "The address to bind the Thrift RPC service to"
+      "description": "The address to bind the Thrift RPC service to (False sets RPC Address to the private IP)"
     },
     "cassandra": {
       "required": "optional",

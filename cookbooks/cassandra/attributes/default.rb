@@ -16,7 +16,7 @@ default[:cassandra][:data_dir] = "/var/lib"
 default[:cassandra][:token_position] = false
 default[:cassandra][:initial_token] = false
 default[:cassandra][:seed] = false
-default[:cassandra][:rpc_address] = "0.0.0.0"
+default[:cassandra][:rpc_address] = false
 default[:cassandra][:confPath] = "/etc/cassandra/"
 
 default[:internal][:prime] = true
