@@ -1,6 +1,6 @@
 # Needed for the Chef script to function properly
-normal[:setup][:cluster_size] = 4
-normal[:setup][:current_role] = "brisk"
+default[:setup][:cluster_size] = 4
+default[:setup][:current_role] = "brisk"
 
 # A unique name is preferred to stop the risk of different clusters joining each other
 normal[:cassandra][:cluster_name] = "Brisk Cluster"
@@ -22,4 +22,4 @@ normal[:cassandra][:rpc_address] = false
 normal[:cassandra][:confPath] = "/etc/brisk/cassandra/"
 
 # Advanced Brisk settings
-normal[:brisk][:endpoint_snitch] = "org.apache.cassandra.locator.BriskSimpleSnitch"
+default[:brisk][:endpoint_snitch] = "org.apache.cassandra.locator.BriskSimpleSnitch"
